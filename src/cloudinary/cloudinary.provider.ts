@@ -6,9 +6,9 @@ import {
 } from '@nestjs/platform-express';
 
 cloudinary.config({
-  cloud_name: 'dpyxsusph',
-  api_key: '588724539765789',
-  api_secret: 'mIPBiXu1S3R6_lTk-jRf3l8Tez4',
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
 });
 
 export class CloudinaryConfigService implements MulterOptionsFactory {
