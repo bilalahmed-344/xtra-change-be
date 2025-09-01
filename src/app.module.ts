@@ -5,10 +5,15 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { CloudinaryConfigService } from './cloudinary/cloudinary.provider';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    MulterModule.registerAsync({
+      useClass: CloudinaryConfigService,
+    }),
     PrismaModule,
     AuthModule,
     UserModule,

@@ -18,6 +18,7 @@ model User {
   dob         String?   
   address     String?   
   gender     String?
+  profilePic String? 
   idCardFrontSide String?    
   idCardBackSide String?    
   createdAt   DateTime @default(now())
