@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { CloudinaryConfigService } from './cloudinary/cloudinary.provider';
+import { CardsModule } from './cards/cards.module';
+import { StripeModule } from './stripe/stripe.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { CloudinaryConfigService } from './cloudinary/cloudinary.provider';
     PrismaModule,
     AuthModule,
     UserModule,
+    CardsModule,
+    StripeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
