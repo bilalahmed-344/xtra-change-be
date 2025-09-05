@@ -9,6 +9,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { CloudinaryConfigService } from './cloudinary/cloudinary.provider';
 import { CardsModule } from './cards/cards.module';
 import { StripeModule } from './stripe/stripe.module';
+import { RoundUpModule } from './round-up/round-up.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { StripeModule } from './stripe/stripe.module';
     UserModule,
     CardsModule,
     StripeModule,
+    RoundUpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
