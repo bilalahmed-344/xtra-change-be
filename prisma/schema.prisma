@@ -26,6 +26,8 @@ model User {
 
   stripeCustomerId String?
   cards Card[]
+  roundUpSetting  RoundUpSetting?
+
 
 }
 
@@ -46,6 +48,36 @@ model Card {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model RoundUpSetting {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  enabled     Boolean  @default(true)
+
+  paymentFrequency PaymentFrequency @default(DAILY)
+  roundUpLimit     Float? 
+
+  destination RoundUpDestination @default(SAVINGS)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+
+
+
+enum PaymentFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+enum RoundUpDestination {
+  SAVINGS
+  INVESTMENT
+  CHARITY
+}
 enum CardStatus {
   ACTIVE
   INACTIVE
