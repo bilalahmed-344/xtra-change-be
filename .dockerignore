@@ -1,0 +1,11 @@
+node_modules
+test
+dist
+.git
+.vscode
+.env
+Dockerfile*
+docker-compose*.yml
+npm-debug.log
+.prettierrc
+README.md
