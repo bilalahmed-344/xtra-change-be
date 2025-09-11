@@ -56,23 +56,27 @@ export class StripeService {
   async addCard(userId: string, paymentMethodId: string) {
     const customerId = await this.getOrCreateCustomer(userId);
 
-    // Attach payment method to customer
+    // ✅ Attach payment method to customer
     await this.stripe.paymentMethods.attach(paymentMethodId, {
       customer: customerId,
     });
 
-    // Get card details
+    await this.stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
     const paymentMethod =
       await this.stripe.paymentMethods.retrieve(paymentMethodId);
     if (paymentMethod.type !== 'card' || !paymentMethod.card) {
       throw new BadRequestException('Provided payment method is not a card');
     }
 
-    // Save to database
     const savedCard = await this.prisma.card.create({
       data: {
         userId,
-        stripeCardId: paymentMethodId,
+        stripeCardId: paymentMethod.id,
         brand: paymentMethod.card.brand,
         last4: paymentMethod.card.last4,
         expMonth: paymentMethod.card.exp_month,
