@@ -1,0 +1,44 @@
+import { Controller, Post, Get, Body, Query, Param, Req } from '@nestjs/common';
+import { PlaidService } from './plaid.service';
+
+@Controller('plaid')
+export class PlaidController {
+  constructor(private readonly plaidService: PlaidService) {}
+
+  @Post('create-link-token')
+  async createLinkToken(@Req() req) {
+    const userId = req.user.id;
+    const linkToken = await this.plaidService.createLinkToken(userId);
+    return { link_token: linkToken };
+  }
+
+  @Post('exchange-public-token')
+  async exchangePublicToken(@Req() req, @Body() body: { publicToken: string }) {
+    const userId = req.user.id;
+    const result = await this.plaidService.exchangePublicToken(
+      body.publicToken,
+      userId,
+    );
+    return result;
+  }
+
+  @Get('accounts/:accessToken')
+  async getAccounts(@Param('accessToken') accessToken: string) {
+    const accounts = await this.plaidService.getAccounts(accessToken);
+    return { accounts };
+  }
+
+  @Get('transactions')
+  async getTransactions(
+    @Query('accessToken') accessToken: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const transactions = await this.plaidService.getTransactions(
+      accessToken,
+      startDate,
+      endDate,
+    );
+    return { transactions };
+  }
+}
