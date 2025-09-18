@@ -28,6 +28,7 @@ model User {
   cards Card[]
   roundUpSetting  RoundUpSetting?
 
+  plaidItems       PlaidItem[]
 
 }
 
@@ -64,7 +65,49 @@ model RoundUpSetting {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model PlaidItem {
+  id           String   @id @default(uuid())
+  userId       String
+  accessToken  String
+  itemId       String
+  institution  String?
+  status       String?  // "active" etc.
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+   user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts PlaidAccount[]
+}
+
+model PlaidAccount {
+  id           String   @id @default(uuid())
+  plaidItemId  String
+  accountId    String
+  name         String?
+  mask         String?
+  type         String?
+  subtype      String?
+  currentBalance Float?
+  availableBalance Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+ plaidItem PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  transactions PlaidTransaction[]
+}
+model PlaidTransaction {
+  id          String   @id @default(uuid())
+  plaidAccountId String
+  transactionId String  @unique
+  date        DateTime
+  name        String
+  amount      Float
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account PlaidAccount @relation(fields: [plaidAccountId], references: [id], onDelete: Cascade)
+}
 
 
 
