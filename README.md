@@ -34,7 +34,7 @@ Before running this project, make sure you have:
 
 ```bash
 git clone git@github.com-company:Techify2-0/hoa-be.git
-cd hoa-be
+cd xtar-change
 ```
 
 ### 2. Install Dependencies

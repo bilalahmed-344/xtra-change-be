@@ -11,14 +11,14 @@ export class UserService {
   constructor(private prisma: PrismaService) {}
 
   async findOneById(id: string) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { id },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
+    user.code = '';
     return user;
   }
 

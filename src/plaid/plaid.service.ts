@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   PlaidApi,
@@ -132,7 +137,7 @@ export class PlaidService {
       throw error;
     }
   }
-
+  // get accounts for the plaid
   async getAccounts(accessToken: string) {
     try {
       const request: AccountsGetRequest = {
@@ -147,23 +152,99 @@ export class PlaidService {
     }
   }
 
+  async getUserAccounts(userId: string) {
+    try {
+      // Fetch all accounts from DB for this user
+      const items = await this.prisma.plaidItem.findMany({
+        where: { userId },
+        include: { accounts: true },
+      });
+
+      // Flatten accounts if you want a simple list
+      const accounts = items.flatMap((item) => item.accounts);
+
+      return { accounts };
+    } catch (error) {
+      this.logger.error('Error fetching user accounts:', error);
+      throw error;
+    }
+  }
+
   async getTransactions(
     accessToken: string,
-    startDate: string,
-    endDate: string,
+    startDate?: string,
+    endDate?: string,
+    page: number = 1,
+    limit: number = 20,
   ) {
     try {
+      const today = new Date();
+      const defaultEnd = today.toISOString().split('T')[0];
+      const defaultStart = new Date(today.setDate(today.getDate() - 30))
+        .toISOString()
+        .split('T')[0];
+
       const request: TransactionsGetRequest = {
         access_token: accessToken,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: startDate || defaultStart,
+        end_date: endDate || defaultEnd,
+        options: {
+          offset: (page - 1) * limit,
+          count: limit,
+        },
       };
 
       const response = await this.plaidClient.transactionsGet(request);
-      return response.data.transactions;
+      const transactions = response.data.transactions;
+      const total = response.data.total_transactions;
+      // Save or update transactions in DB
+      for (const tx of transactions) {
+        // Find related PlaidAccount in DB
+        const account = await this.prisma.plaidAccount.findUnique({
+          where: { accountId: tx.account_id },
+        });
+
+        if (!account) {
+          this.logger.warn(`Account ${tx.account_id} not found, skipping tx.`);
+          continue;
+        }
+
+        // Upsert transaction
+        await this.prisma.plaidTransaction.upsert({
+          where: { transactionId: tx.transaction_id }, // unique field
+          update: {
+            date: new Date(tx.date),
+            name: tx.name,
+            amount: tx.amount,
+            category: tx.category?.join(', ') || null,
+          },
+          create: {
+            plaidAccountId: account.id,
+            transactionId: tx.transaction_id,
+            date: new Date(tx.date),
+            name: tx.name,
+            amount: tx.amount,
+            category: tx.category?.join(', ') || null,
+          },
+        });
+      }
+      // this.logger.log(`Synced ${transactions.length} transactions.`);
+
+      return {
+        transactions,
+        metadata: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
+      if (error.response?.data?.error_code === 'INVALID_ACCESS_TOKEN') {
+        throw new UnauthorizedException('Invalid Plaid access token');
+      }
       this.logger.error('Error fetching transactions:', error);
-      throw error;
+      throw new BadRequestException('Failed to fetch transactions from Plaid');
     }
   }
 }

@@ -82,7 +82,7 @@ model PlaidItem {
 model PlaidAccount {
   id           String   @id @default(uuid())
   plaidItemId  String
-  accountId    String
+  accountId    String   @unique
   name         String?
   mask         String?
   type         String?
