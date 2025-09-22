@@ -1,4 +1,4 @@
-# HOA Backend
+# xtra-change Backend
 
 A modern backend application for Homeowners Association (HOA) management built with NestJS, PostgreSQL, and Prisma.
 
@@ -278,6 +278,9 @@ If you have any questions or need help, please:
 ---
 
 **Happy Coding! 🎉**
+
 # xtra-change-be
+
 # xtra-change-be
+
 # xtra-change-be
