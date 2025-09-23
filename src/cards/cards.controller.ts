@@ -6,7 +6,7 @@ import {
   Param,
   Delete,
   Req,
-  UseGuards,
+  Patch,
 } from '@nestjs/common';
 import { CardsService } from './cards.service';
 import { CreateCardDto } from './dto/create-card.dto';
@@ -33,7 +33,15 @@ export class CardsController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.cardsService.remove(id);
+  async remove(@Req() req, @Param('id') id: string) {
+    const userId = req.user.id;
+
+    return this.cardsService.remove(userId, id);
+  }
+
+  @Patch(':cardId/activate')
+  async activateCard(@Req() req, @Param('cardId') cardId: string) {
+    const userId = req.user.id;
+    return this.cardsService.setActiveCard(userId, cardId);
   }
 }

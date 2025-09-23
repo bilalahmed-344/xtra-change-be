@@ -27,7 +27,45 @@ export class CardsService {
     return card;
   }
 
-  async remove(id: string) {
-    return this.prisma.card.delete({ where: { id } });
+  async remove(userId: string, cardId: string) {
+    const card = await this.prisma.card.findUnique({ where: { id: cardId } });
+    if (!card || card.userId !== userId) {
+      throw new NotFoundException('Card not found for this user');
+    }
+
+    try {
+      await this.stripeService.detachCard(card.stripeCardId);
+    } catch (error) {
+      console.error('Error detaching card from Stripe:', error);
+    }
+
+    await this.prisma.card.delete({ where: { id: cardId } });
+
+    return {
+      success: true,
+      message: 'Card has been successfully removed',
+    };
+  }
+
+  async setActiveCard(userId: string, cardId: string) {
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+    });
+
+    if (!card || card.userId !== userId) {
+      throw new NotFoundException('Card not found for this user');
+    }
+
+    // Reset all other cards
+    await this.prisma.card.updateMany({
+      where: { userId },
+      data: { isDefault: false, status: 'INACTIVE' },
+    });
+
+    // Mark selected card as ACTIVE + default
+    return this.prisma.card.update({
+      where: { id: cardId },
+      data: { isDefault: true, status: 'ACTIVE' },
+    });
   }
 }

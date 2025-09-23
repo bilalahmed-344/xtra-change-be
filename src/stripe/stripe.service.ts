@@ -68,6 +68,13 @@ export class StripeService {
       throw new BadRequestException('Provided payment method is not a card');
     }
 
+    // Before creating the new card, reset all others to isDefault = false
+
+    await this.prisma.card.updateMany({
+      where: { userId },
+      data: { isDefault: false },
+    });
+
     // Save to database
     const savedCard = await this.prisma.card.create({
       data: {
@@ -77,10 +84,19 @@ export class StripeService {
         last4: paymentMethod.card.last4,
         expMonth: paymentMethod.card.exp_month,
         expYear: paymentMethod.card.exp_year,
-        status: 'ACTIVE',
+        status: 'ACTIVE', // always active
+        isDefault: true, // always default
       },
     });
 
     return savedCard;
+  }
+
+  async detachCard(paymentMethodId: string) {
+    try {
+      return await this.stripe.paymentMethods.detach(paymentMethodId);
+    } catch (error) {
+      throw new BadRequestException('Failed to remove card from Stripe');
+    }
   }
 }
