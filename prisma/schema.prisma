@@ -15,7 +15,7 @@ model User {
   phoneVerified   Boolean  @default(false)
   name        String?
   email       String?   @unique
-  dob         String?   
+  dob         DateTime?
   address     String?   
   gender     String?
   profilePic String? 
