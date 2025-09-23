@@ -10,6 +10,7 @@ import { CloudinaryConfigService } from './cloudinary/cloudinary.provider';
 import { CardsModule } from './cards/cards.module';
 import { StripeModule } from './stripe/stripe.module';
 import { RoundUpModule } from './round-up/round-up.module';
+import { PlaidModule } from './plaid/plaid.module';
 import { TwilioModule } from './twilio/twilio.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { TwilioModule } from './twilio/twilio.module';
     CardsModule,
     StripeModule,
     RoundUpModule,
+    PlaidModule,
     TwilioModule,
   ],
   controllers: [AppController],
