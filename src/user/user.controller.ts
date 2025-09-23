@@ -1,13 +1,10 @@
 import {
   Controller,
   Get,
-  Param,
   Body,
   Patch,
-  BadRequestException,
   UploadedFile,
   UseInterceptors,
-  Post,
   Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
@@ -23,11 +20,10 @@ export class UserController {
     return this.userService.findOneById(userId);
   }
 
-  @Patch(':id')
+  @Patch()
   @UseInterceptors(FileInterceptor('file'))
   async updateUser(
     @Req() req,
-    // @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {

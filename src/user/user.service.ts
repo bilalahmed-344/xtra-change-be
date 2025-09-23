@@ -47,9 +47,10 @@ export class UserService {
       },
     });
 
+    const { stripeCustomerId, ...otherUpdatedUser } = updatedUser;
     return {
       message: 'User updated successfully',
-      user: updatedUser,
+      user: otherUpdatedUser,
     };
   }
 }
