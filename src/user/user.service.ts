@@ -11,15 +11,16 @@ export class UserService {
   constructor(private prisma: PrismaService) {}
 
   async findOneById(id: string) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { id },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    const { stripeCustomerId, ...otherUser } = user;
 
-    return user;
+    return otherUser;
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
@@ -47,9 +48,10 @@ export class UserService {
       },
     });
 
+    const { stripeCustomerId, ...otherUpdatedUser } = updatedUser;
     return {
       message: 'User updated successfully',
-      user: updatedUser,
+      user: otherUpdatedUser,
     };
   }
 }

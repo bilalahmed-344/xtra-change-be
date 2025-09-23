@@ -1,4 +1,4 @@
-# HOA Backend
+# xtra-change Backend
 
 A modern backend application for Homeowners Association (HOA) management built with NestJS, PostgreSQL, and Prisma.
 
@@ -34,7 +34,7 @@ Before running this project, make sure you have:
 
 ```bash
 git clone git@github.com-company:Techify2-0/hoa-be.git
-cd hoa-be
+cd xtar-change
 ```
 
 ### 2. Install Dependencies
@@ -278,6 +278,9 @@ If you have any questions or need help, please:
 ---
 
 **Happy Coding! 🎉**
+
 # xtra-change-be
+
 # xtra-change-be
+
 # xtra-change-be
