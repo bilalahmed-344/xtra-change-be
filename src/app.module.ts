@@ -11,6 +11,7 @@ import { CardsModule } from './cards/cards.module';
 import { StripeModule } from './stripe/stripe.module';
 import { RoundUpModule } from './round-up/round-up.module';
 import { PlaidModule } from './plaid/plaid.module';
+import { TwilioModule } from './twilio/twilio.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PlaidModule } from './plaid/plaid.module';
     StripeModule,
     RoundUpModule,
     PlaidModule,
+    TwilioModule,
   ],
   controllers: [AppController],
   providers: [AppService],
