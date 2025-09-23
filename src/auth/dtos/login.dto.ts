@@ -4,8 +4,4 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   phoneNumber: string;
-
-  @IsString()
-  @IsNotEmpty()
-  code: string;
 }
