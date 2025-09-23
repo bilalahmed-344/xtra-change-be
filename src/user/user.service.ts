@@ -18,8 +18,9 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    const { stripeCustomerId, ...otherUser } = user;
 
-    return user;
+    return otherUser;
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
