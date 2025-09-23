@@ -11,8 +11,8 @@ datasource db {
 
 model User {
   id      String   @id @default(uuid())
-  code        String   
   phoneNumber String    @unique
+  phoneVerified   Boolean  @default(false)
   name        String?
   email       String?   @unique
   dob         String?   
