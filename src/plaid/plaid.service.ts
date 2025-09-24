@@ -17,6 +17,7 @@ import {
   Products,
 } from 'plaid';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { calculateRoundUp, toCents } from 'src/utils/roundup';
 
 @Injectable()
 export class PlaidService {
@@ -202,6 +203,7 @@ export class PlaidService {
         // Find related PlaidAccount in DB
         const account = await this.prisma.plaidAccount.findUnique({
           where: { accountId: tx.account_id },
+          include: { plaidItem: true },
         });
 
         if (!account) {
@@ -210,8 +212,8 @@ export class PlaidService {
         }
 
         // Upsert transaction
-        await this.prisma.plaidTransaction.upsert({
-          where: { transactionId: tx.transaction_id }, // unique field
+        const plaidTx = await this.prisma.plaidTransaction.upsert({
+          where: { transactionId: tx.transaction_id },
           update: {
             date: new Date(tx.date),
             name: tx.name,
@@ -227,7 +229,25 @@ export class PlaidService {
             category: tx.category?.join(', ') || null,
           },
         });
+
+        // 2 Calculate RoundUp
+        const roundUpCents = calculateRoundUp(toCents(tx.amount));
+        const roundUpAmount = roundUpCents / 100;
+
+        if (roundUpAmount > 0) {
+          // 3️⃣ Save RoundUpTransaction (skip if already exists)
+          await this.prisma.roundUpTransaction.upsert({
+            where: { plaidTransactionId: plaidTx.id },
+            update: { roundUpAmount },
+            create: {
+              userId: account.plaidItem.userId,
+              plaidTransactionId: plaidTx.id,
+              roundUpAmount,
+            },
+          });
+        }
       }
+
       // this.logger.log(`Synced ${transactions.length} transactions.`);
 
       return {
