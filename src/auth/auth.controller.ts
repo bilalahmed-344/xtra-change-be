@@ -18,4 +18,12 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+  @Public()
+  @Post('verify-otp')
+  async verifyOtp(
+    @Body('phoneNumber') phoneNumber: string,
+    @Body('code') code: string,
+  ) {
+    return this.authService.verifyOtp(phoneNumber, code);
+  }
 }
