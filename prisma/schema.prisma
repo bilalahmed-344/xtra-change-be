@@ -21,6 +21,10 @@ model User {
   profilePic String? 
   idCardFrontSide String?    
   idCardBackSide String?    
+  otpCode     String?
+  otpExpiresAt DateTime?
+  pin          String? 
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -30,9 +34,7 @@ model User {
 
   plaidItems       PlaidItem[]
 
-    // OTP fields
-  otpCode     String?
-  otpExpiresAt DateTime?
+   
 
 }
 

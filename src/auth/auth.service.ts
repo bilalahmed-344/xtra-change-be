@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -10,6 +11,7 @@ import { SignupDto } from './dtos/signup.dto';
 import { LoginDto } from './dtos/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { TwilioService } from 'src/twilio/twilio.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -102,7 +104,7 @@ export class AuthService {
 
     return {
       message: 'OTP sent',
-      otp, // ⚠️ testing only
+      otp,
     };
   }
 
@@ -136,7 +138,6 @@ export class AuthService {
   //   };
   // }
 
-  // 🔹 Step 2: Verify OTP (for signup or login)
   async verifyOtp(phoneNumber: string, code: string) {
     const user = await this.prisma.user.findUnique({
       where: { phoneNumber },
@@ -155,24 +156,81 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
-    // Mark verified + clear OTP
     await this.prisma.user.update({
       where: { id: user.id },
       data: { otpCode: null, otpExpiresAt: null, phoneVerified: true },
     });
 
-    // Generate JWT
+    return {
+      message: 'OTP verified successfully. Now set or enter PIN.',
+      userId: user.id,
+    };
+  }
+  async setPin(userId: string, pin: string) {
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+
+    if (!pin) {
+      throw new BadRequestException('PIN is required');
+    }
+
+    // make sure the user exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const hashedPin = await bcrypt.hash(pin, 10);
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { pin: hashedPin },
+    });
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
 
     return {
-      message: 'OTP verified. Logged in successfully.',
+      message: 'PIN set successfully.',
       access_token: token,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
+      },
+    };
+  }
+
+  async verifyPin(phoneNumber: string, pin: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { phoneNumber },
+    });
+
+    if (!user || !user.pin) {
+      throw new UnauthorizedException('PIN not set or user not found');
+    }
+
+    const isValid = await bcrypt.compare(pin, user.pin);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid PIN');
+    }
+
+    const payload = { id: user.id };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      message: 'Login successful',
+      access_token: token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        profilePic: user.profilePic,
       },
     };
   }

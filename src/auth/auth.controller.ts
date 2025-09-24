@@ -26,4 +26,19 @@ export class AuthController {
   ) {
     return this.authService.verifyOtp(phoneNumber, code);
   }
+
+  @Public()
+  @Post('set-pin')
+  async setPin(@Body('userId') userId: string, @Body('pin') pin: string) {
+    return this.authService.setPin(userId, pin);
+  }
+
+  @Public()
+  @Post('verify-pin')
+  async verifyPin(
+    @Body('phoneNumber') phoneNumber: string,
+    @Body('pin') pin: string,
+  ) {
+    return this.authService.verifyPin(phoneNumber, pin);
+  }
 }
