@@ -24,14 +24,14 @@ model User {
   otpCode     String?
   otpExpiresAt DateTime?
   pin          String? 
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   stripeCustomerId String?
   cards Card[]
   roundUpSetting  RoundUpSetting?
-
+  roundUpTransactions  RoundUpTransaction[]
   plaidItems       PlaidItem[]
 
    
@@ -99,7 +99,7 @@ model PlaidAccount {
   updatedAt    DateTime @updatedAt
 
  plaidItem PlaidItem @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
-  transactions PlaidTransaction[]
+ transactions PlaidTransaction[]
 }
 model PlaidTransaction {
   id          String   @id @default(uuid())
@@ -113,10 +113,30 @@ model PlaidTransaction {
   updatedAt   DateTime @updatedAt
 
   account PlaidAccount @relation(fields: [plaidAccountId], references: [id], onDelete: Cascade)
+  roundUp        RoundUpTransaction?
+}
+
+model RoundUpTransaction {
+  id                 String           @id @default(uuid())
+  userId             String
+  plaidTransactionId String           @unique   
+  roundUpAmount      Float
+  status             RoundUpStatus    @default(PENDING)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // relations
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plaidTransaction   PlaidTransaction @relation(fields: [plaidTransactionId], references: [id], onDelete: Cascade)
 }
 
 
 
+enum RoundUpStatus {
+  PENDING    // calculated but not yet moved
+  INVESTED   // successfully transferred
+  FAILED     // failed to process
+}
 enum PaymentFrequency {
   DAILY
   WEEKLY
