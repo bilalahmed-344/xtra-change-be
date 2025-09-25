@@ -20,6 +20,43 @@ export class AuthService {
     private jwtService: JwtService,
     private twilioService: TwilioService,
   ) {}
+
+  async signInOrSignUp(dto: SignupDto | LoginDto) {
+    let user = await this.prisma.user.findUnique({
+      where: { phoneNumber: dto.phoneNumber },
+    });
+
+    if (!user) {
+      // User does not exist → signup flow
+      user = await this.prisma.user.create({
+        data: {
+          name: (dto as SignupDto).name ?? null,
+          email: (dto as SignupDto).email ?? null,
+          phoneNumber: dto.phoneNumber,
+          phoneVerified: false,
+        },
+      });
+    }
+
+    // OTP = last 4 digits of phone (demo only)
+    const otp = user.phoneNumber.slice(-4);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode: otp,
+        otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      },
+    });
+
+    return {
+      success: true,
+      message: 'OTP sent for verification.',
+      otp,
+      userId: user.id,
+    };
+  }
+
   async signup(dto: SignupDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { phoneNumber: dto.phoneNumber },
