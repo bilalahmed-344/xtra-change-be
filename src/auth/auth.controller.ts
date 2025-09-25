@@ -9,15 +9,20 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Post('signup')
-  async signUp(@Body() signupDto: SignupDto) {
-    return this.authService.signup(signupDto);
+  @Post('signin')
+  async signInOrSignUp(@Body() dto: SignupDto | LoginDto) {
+    return this.authService.signInOrSignUp(dto);
   }
-  @Public()
-  @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
-  }
+
+  // @Post('signup')
+  // async signUp(@Body() signupDto: SignupDto) {
+  //   return this.authService.signup(signupDto);
+  // }
+  // @Public()
+  // @Post('login')
+  // async login(@Body() loginDto: LoginDto) {
+  //   return this.authService.login(loginDto);
+  // }
   @Public()
   @Post('verify-otp')
   async verifyOtp(
