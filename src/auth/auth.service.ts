@@ -26,6 +26,7 @@ export class AuthService {
       where: { phoneNumber: dto.phoneNumber },
     });
 
+    let newUser = false;
     if (!user) {
       // User does not exist → signup flow
       user = await this.prisma.user.create({
@@ -36,6 +37,7 @@ export class AuthService {
           phoneVerified: false,
         },
       });
+      newUser = true;
     }
 
     // OTP = last 4 digits of phone (demo only)
@@ -53,6 +55,7 @@ export class AuthService {
       success: true,
       message: 'OTP sent for verification.',
       otp,
+      newUser,
       userId: user.id,
     };
   }
