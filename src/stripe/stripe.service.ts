@@ -99,4 +99,22 @@ export class StripeService {
       throw new BadRequestException('Failed to remove card from Stripe');
     }
   }
+  async chargeCard({
+    customerId,
+    cardId,
+    amount,
+  }: {
+    customerId: string;
+    cardId: string;
+    amount: number; // in cents
+  }) {
+    return this.stripe.paymentIntents.create({
+      amount,
+      currency: 'usd',
+      customer: customerId,
+      payment_method: cardId,
+      off_session: true,
+      confirm: true,
+    });
+  }
 }
