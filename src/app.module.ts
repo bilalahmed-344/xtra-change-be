@@ -12,6 +12,7 @@ import { StripeModule } from './stripe/stripe.module';
 import { RoundUpModule } from './round-up/round-up.module';
 import { PlaidModule } from './plaid/plaid.module';
 import { TwilioModule } from './twilio/twilio.module';
+import { RoundupTestModule } from './roundup-test/roundup-test.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { TwilioModule } from './twilio/twilio.module';
     RoundUpModule,
     PlaidModule,
     TwilioModule,
+    RoundupTestModule,
   ],
   controllers: [AppController],
   providers: [AppService],
