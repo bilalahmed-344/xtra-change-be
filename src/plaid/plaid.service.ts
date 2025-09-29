@@ -267,4 +267,16 @@ export class PlaidService {
       throw new BadRequestException('Failed to fetch transactions from Plaid');
     }
   }
+
+  async getPendingRoundUpTotal(userId: string) {
+    const result = await this.prisma.roundUpTransaction.aggregate({
+      _sum: { roundUpAmount: true },
+      where: {
+        userId,
+        status: 'PENDING',
+      },
+    });
+
+    return result._sum.roundUpAmount ?? 0;
+  }
 }

@@ -62,4 +62,11 @@ export class PlaidController {
     );
     return { transactions };
   }
+
+  @Get('total-roundup')
+  async getPendingRoundUpTotal(@Req() req) {
+    const userId = req.user.id;
+    const total = await this.plaidService.getPendingRoundUpTotal(userId);
+    return { totalRoundUp: total };
+  }
 }
