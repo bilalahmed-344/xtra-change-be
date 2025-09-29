@@ -122,6 +122,7 @@ model RoundUpTransaction {
   plaidTransactionId String           @unique   
   roundUpAmount      Float
   status             RoundUpStatus    @default(PENDING)
+  failureReason      String?          // optional: save Stripe error code/message
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -133,9 +134,12 @@ model RoundUpTransaction {
 
 
 enum RoundUpStatus {
-  PENDING    // calculated but not yet moved
-  INVESTED   // successfully transferred
-  FAILED     // failed to process
+  PENDING       // calculated but not yet moved
+  INVESTED      // successfully transferred
+  FAILED        // generic fail
+  INSUFFICIENT_FUNDS
+  CARD_DECLINED
+  RETRY_PENDING // failed but queued for retry
 }
 enum PaymentFrequency {
   DAILY
