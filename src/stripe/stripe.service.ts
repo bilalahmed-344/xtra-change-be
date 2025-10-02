@@ -53,39 +53,81 @@ export class StripeService {
     return customer.id;
   }
 
+  // async addCard(userId: string, paymentMethodId: string) {
+  //   const customerId = await this.getOrCreateCustomer(userId);
+
+  //   // Get card details
+  //   const paymentMethod =
+  //     await this.stripe.paymentMethods.retrieve(paymentMethodId);
+
+  //   if (paymentMethod.customer && paymentMethod.customer !== customerId) {
+  //     throw new BadRequestException(
+  //       'This payment method belongs to another customer',
+  //     );
+  //   }
+  //   // Attach payment method to customer
+
+  //   // 2. Attach only if not already attached
+  //   if (!paymentMethod.customer) {
+  //     await this.stripe.paymentMethods.attach(paymentMethodId, {
+  //       customer: customerId,
+  //     });
+  //   }
+
+  //   // Before creating the new card, reset all others to isDefault = false
+
+  //   await this.prisma.card.updateMany({
+  //     where: { userId },
+  //     data: { isDefault: false },
+  //   });
+
+  //   // Save to database
+  //   const savedCard = await this.prisma.card.create({
+  //     data: {
+  //       userId,
+  //       stripeCardId: paymentMethodId,
+  //       brand: paymentMethod?.card?.brand,
+  //       last4: paymentMethod?.card?.last4,
+  //       expMonth: paymentMethod?.card?.exp_month,
+  //       expYear: paymentMethod?.card?.exp_year,
+  //       status: 'ACTIVE', // always active
+  //       isDefault: true, // always default
+  //     },
+  //   });
+
+  //   return savedCard;
+  // }
   async addCard(userId: string, paymentMethodId: string) {
     const customerId = await this.getOrCreateCustomer(userId);
 
-    // Attach payment method to customer
-    await this.stripe.paymentMethods.attach(paymentMethodId, {
-      customer: customerId,
-    });
-
-    // Get card details
+    // Fetch the payment method (it should already be attached by SetupIntent)
     const paymentMethod =
       await this.stripe.paymentMethods.retrieve(paymentMethodId);
-    if (paymentMethod.type !== 'card' || !paymentMethod.card) {
-      throw new BadRequestException('Provided payment method is not a card');
+
+    // Check if the card actually belongs to this customer
+    if (!paymentMethod.customer || paymentMethod.customer !== customerId) {
+      throw new BadRequestException(
+        'This card is not linked to the current customer',
+      );
     }
 
-    // Before creating the new card, reset all others to isDefault = false
-
+    // Mark all other cards as non-default
     await this.prisma.card.updateMany({
       where: { userId },
       data: { isDefault: false },
     });
 
-    // Save to database
+    // Save card in DB
     const savedCard = await this.prisma.card.create({
       data: {
         userId,
-        stripeCardId: paymentMethodId,
-        brand: paymentMethod.card.brand,
-        last4: paymentMethod.card.last4,
-        expMonth: paymentMethod.card.exp_month,
-        expYear: paymentMethod.card.exp_year,
-        status: 'ACTIVE', // always active
-        isDefault: true, // always default
+        stripeCardId: paymentMethod.id,
+        brand: paymentMethod.card?.brand,
+        last4: paymentMethod.card?.last4,
+        expMonth: paymentMethod.card?.exp_month,
+        expYear: paymentMethod.card?.exp_year,
+        status: 'ACTIVE',
+        isDefault: true,
       },
     });
 
@@ -171,5 +213,13 @@ export class StripeService {
       },
       { stripeAccount: connectAccountId },
     );
+  }
+  async createStripeSetupIntent(userId: string) {
+    const customerId = await this.getOrCreateCustomer(userId);
+
+    return this.stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+    });
   }
 }

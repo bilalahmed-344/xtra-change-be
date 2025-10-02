@@ -68,4 +68,8 @@ export class CardsService {
       data: { isDefault: true, status: 'ACTIVE' },
     });
   }
+
+  async createSetupIntent(userId: string) {
+    return this.stripeService.createStripeSetupIntent(userId);
+  }
 }

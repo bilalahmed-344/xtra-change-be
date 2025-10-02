@@ -44,4 +44,9 @@ export class CardsController {
     const userId = req.user.id;
     return this.cardsService.setActiveCard(userId, cardId);
   }
+  @Post('setup-intent')
+  async createSetupIntent(@Req() req) {
+    const userId = req.user.id;
+    return this.cardsService.createSetupIntent(userId);
+  }
 }
