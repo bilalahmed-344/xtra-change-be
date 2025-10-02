@@ -117,4 +117,59 @@ export class StripeService {
       confirm: true,
     });
   }
+
+  async getOrCreateConnectAccount(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    if (user.stripeConnectId) {
+      return user.stripeConnectId;
+    }
+
+    const account = await this.stripe.accounts.create({
+      type: 'express',
+      country: 'US',
+      email: user.email ?? undefined,
+      metadata: { userId },
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { stripeConnectId: account.id },
+    });
+
+    return account.id;
+  }
+
+  async addExternalBankAccount(
+    connectAccountId: string,
+    {
+      name,
+      routingNumber,
+      accountNumber,
+    }: { name: string; routingNumber: string; accountNumber: string },
+  ) {
+    return this.stripe.accounts.createExternalAccount(connectAccountId, {
+      external_account: {
+        object: 'bank_account',
+        country: 'US',
+        currency: 'usd',
+        routing_number: routingNumber,
+        account_number: accountNumber,
+        account_holder_name: name,
+      },
+    });
+  }
+
+  async createPayout(connectAccountId: string, amount: number) {
+    return this.stripe.payouts.create(
+      {
+        amount: Math.round(amount * 100), // convert to cents
+        currency: 'usd',
+      },
+      { stripeAccount: connectAccountId },
+    );
+  }
 }

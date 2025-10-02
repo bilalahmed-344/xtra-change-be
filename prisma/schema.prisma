@@ -29,10 +29,12 @@ model User {
   updatedAt   DateTime @updatedAt
 
   stripeCustomerId String?
+  stripeConnectId   String? 
   cards Card[]
   roundUpSetting  RoundUpSetting?
   roundUpTransactions  RoundUpTransaction[]
   plaidItems       PlaidItem[]
+  withdrawals      Withdrawal[]
 
    
 
@@ -131,6 +133,44 @@ model RoundUpTransaction {
   plaidTransaction   PlaidTransaction @relation(fields: [plaidTransactionId], references: [id], onDelete: Cascade)
 }
 
+
+
+
+// model Withdrawal {
+//   id            String   @id @default(uuid())
+//   userId        String
+//   amount        Float
+//   currency      String   @default("usd")
+//   status        WithdrawalStatus @default(PENDING)
+//   stripePayoutId String? // returned from Stripe
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+
+//   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+// }
+
+model Withdrawal {
+  id              String   @id @default(uuid())
+  userId          String
+  amount          Float
+  currency        String   @default("usd")
+  status          WithdrawalStatus @default(PENDING)
+  stripePayoutId  String?  // returned from Stripe
+  stripeAccountId String?  // Stripe Connect account used for payout
+  failureReason   String?  // Stripe error if FAILED
+  requestedAt     DateTime @default(now()) // when user requested
+  processedAt     DateTime?                // when payout initiated
+  completedAt     DateTime?                // when payout succeeded
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
 
 
 enum RoundUpStatus {
