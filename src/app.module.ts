@@ -13,6 +13,7 @@ import { RoundUpModule } from './round-up/round-up.module';
 import { PlaidModule } from './plaid/plaid.module';
 import { TwilioModule } from './twilio/twilio.module';
 import { RoundupTestModule } from './roundup-test/roundup-test.module';
+import { WithdrawModule } from './withdraw/withdraw.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { RoundupTestModule } from './roundup-test/roundup-test.module';
     PlaidModule,
     TwilioModule,
     RoundupTestModule,
+    WithdrawModule,
   ],
   controllers: [AppController],
   providers: [AppService],
