@@ -70,7 +70,7 @@ export class PlaidService {
         ) as CountryCode[],
         language: 'en',
         // redirect_uri: this.configService.get<string>('plaid.redirectUri'), // ✅ add this
-        // redirect_uri: 'https://sandbox.plaid.com/oauth/redirect',
+        redirect_uri: 'xtrachange://oauth-callback',
       };
 
       const response = await this.plaidClient.linkTokenCreate(request);
