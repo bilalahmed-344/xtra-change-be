@@ -100,25 +100,31 @@ export class StripeService {
   async addCard(userId: string, paymentMethodId: string) {
     const customerId = await this.getOrCreateCustomer(userId);
 
-    // Fetch the payment method (it should already be attached by SetupIntent)
-    const paymentMethod =
-      await this.stripe.paymentMethods.retrieve(paymentMethodId);
-
-    // Check if the card actually belongs to this customer
-    if (!paymentMethod.customer || paymentMethod.customer !== customerId) {
-      throw new BadRequestException(
-        'This card is not linked to the current customer',
-      );
+    // Always explicitly attach the card
+    try {
+      await this.stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+    } catch (err) {
+      if (err.code !== 'resource_already_exists') {
+        throw new BadRequestException(`Failed to attach card: ${err.message}`);
+      }
     }
 
-    // Mark all other cards as non-default
+    // Set as default payment method
+    await this.stripe.customers.update(customerId, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
+
+    const paymentMethod = await this.stripe.paymentMethods.retrieve(paymentMethodId);
+
+    // Save in DB
     await this.prisma.card.updateMany({
       where: { userId },
       data: { isDefault: false },
     });
 
-    // Save card in DB
-    const savedCard = await this.prisma.card.create({
+    return this.prisma.card.create({
       data: {
         userId,
         stripeCardId: paymentMethod.id,
@@ -130,9 +136,8 @@ export class StripeService {
         isDefault: true,
       },
     });
-
-    return savedCard;
   }
+
 
   async detachCard(paymentMethodId: string) {
     try {
