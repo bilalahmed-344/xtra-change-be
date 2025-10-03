@@ -44,23 +44,22 @@ export class PlaidController {
 
   @Get('transactions')
   async getTransactions(
-    @Query('accessToken') accessToken: string,
+    @Req() req,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
   ) {
-    if (!accessToken) {
-      throw new BadRequestException('accessToken is required');
-    }
+    const userId = req.user.id;
+
     const transactions = await this.plaidService.getTransactions(
-      accessToken,
+      userId,
       startDate,
       endDate,
       parseInt(page, 10),
       parseInt(limit, 10),
     );
-    return { transactions };
+    return transactions;
   }
 
   @Get('total-roundup')
