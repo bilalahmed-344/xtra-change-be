@@ -240,7 +240,7 @@ export class AuthService {
     });
     let plaidAccessToken: string | null = null;
     if (plaidItem) {
-      plaidAccessToken = decrypt(plaidItem.accessToken);
+      plaidAccessToken = plaidItem.accessToken;
     }
 
     return {
