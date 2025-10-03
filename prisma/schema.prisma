@@ -132,23 +132,6 @@ model RoundUpTransaction {
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   plaidTransaction   PlaidTransaction @relation(fields: [plaidTransactionId], references: [id], onDelete: Cascade)
 }
-
-
-
-
-// model Withdrawal {
-//   id            String   @id @default(uuid())
-//   userId        String
-//   amount        Float
-//   currency      String   @default("usd")
-//   status        WithdrawalStatus @default(PENDING)
-//   stripePayoutId String? // returned from Stripe
-//   createdAt     DateTime @default(now())
-//   updatedAt     DateTime @updatedAt
-
-//   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-// }
-
 model Withdrawal {
   id              String   @id @default(uuid())
   userId          String
