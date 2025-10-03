@@ -1,41 +1,32 @@
-// src/utils/crypto.util.ts
 import * as crypto from 'crypto';
 
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
+const algorithm = 'aes-256-cbc';
 
-// Decode the 64-char hex key from .env into 32 bytes
-const ENC_KEY = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
-
-export function encrypt(text: string): string {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv(ALGORITHM, ENC_KEY, iv);
-
-  const encrypted = Buffer.concat([
-    cipher.update(text, 'utf8'),
-    cipher.final(),
-  ]);
-
-  const tag = cipher.getAuthTag();
-
-  // Return iv:tag:encrypted as hex
-  return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
+function getKeyFromText(textKey: string): Buffer {
+  return crypto.createHash('sha256').update(textKey).digest();
 }
 
-export function decrypt(encryptedText: string): string {
-  const [ivHex, tagHex, encryptedHex] = encryptedText.split(':');
+const textKey = process.env.ENCRYPT_SECRET;
+console.log('🚀 ~ textKey:', textKey);
+if (!textKey) {
+  throw new Error('ENCRYPT_SECRET is not defined in environment variables');
+}
+const key = getKeyFromText(textKey);
 
-  const iv = Buffer.from(ivHex, 'hex');
-  const tag = Buffer.from(tagHex, 'hex');
-  const encrypted = Buffer.from(encryptedHex, 'hex');
+export function encrypt(data: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
+  let encrypted = cipher.update(data, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, ENC_KEY, iv);
-  decipher.setAuthTag(tag);
-
-  const decrypted = Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]);
-
-  return decrypted.toString('utf8');
+export function decrypt(data: string): string {
+  const parts = data.split(':');
+  const iv_from_data = Buffer.from(parts.shift()!, 'hex');
+  const encryptedText = parts.join(':');
+  const decipher = crypto.createDecipheriv(algorithm, key, iv_from_data);
+  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 }

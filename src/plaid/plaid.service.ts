@@ -190,23 +190,29 @@ export class PlaidService {
   }
 
   async getTransactions(
-    accessToken: string,
+    userId: string,
     startDate?: string,
     endDate?: string,
     page: number = 1,
     limit: number = 20,
   ) {
     try {
+      const plaidItem = await this.prisma.plaidItem.findFirst({
+        where: { userId },
+      });
+
+      if (!plaidItem) {
+        throw new BadRequestException('Plaid item not found for user');
+      }
+
       const today = new Date();
       const defaultEnd = today.toISOString().split('T')[0];
       const defaultStart = new Date(today.setDate(today.getDate() - 30))
         .toISOString()
         .split('T')[0];
-
-      const decryptToken = decrypt(accessToken);
-
+      const accessToken = decrypt(plaidItem.accessToken);
       const request: TransactionsGetRequest = {
-        access_token: decryptToken,
+        access_token: accessToken,
         start_date: startDate || defaultStart,
         end_date: endDate || defaultEnd,
         options: {
@@ -216,7 +222,8 @@ export class PlaidService {
       };
 
       const response = await this.plaidClient.transactionsGet(request);
-      const transactions = response.data.transactions;
+      const transactions = response?.data?.transactions || [];
+
       const total = response.data.total_transactions;
       // Save or update transactions in DB
       for (const tx of transactions) {
@@ -267,8 +274,6 @@ export class PlaidService {
           });
         }
       }
-
-      // this.logger.log(`Synced ${transactions.length} transactions.`);
 
       return {
         transactions,
