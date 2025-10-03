@@ -18,7 +18,7 @@ import {
   Products,
 } from 'plaid';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { encrypt } from 'src/utils/crypto.util';
+import { decrypt, encrypt } from 'src/utils/crypto.util';
 import { calculateRoundUp, toCents } from 'src/utils/roundup';
 
 @Injectable()
@@ -203,8 +203,10 @@ export class PlaidService {
         .toISOString()
         .split('T')[0];
 
+      const decryptToken = decrypt(accessToken);
+
       const request: TransactionsGetRequest = {
-        access_token: accessToken,
+        access_token: decryptToken,
         start_date: startDate || defaultStart,
         end_date: endDate || defaultEnd,
         options: {
