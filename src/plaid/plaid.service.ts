@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import {
   PlaidApi,
   PlaidEnvironments,
@@ -17,6 +18,7 @@ import {
   Products,
 } from 'plaid';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { encrypt } from 'src/utils/crypto.util';
 import { calculateRoundUp, toCents } from 'src/utils/roundup';
 
 @Injectable()
@@ -89,6 +91,7 @@ export class PlaidService {
       };
 
       const response = await this.plaidClient.itemPublicTokenExchange(request);
+
       const { access_token, item_id } = response.data;
       const accountsResponse = await this.plaidClient.accountsGet({
         access_token,
@@ -107,11 +110,14 @@ export class PlaidService {
         });
         institutionName = institutionResponse.data.institution?.name || null;
       }
+
+      const encryptedToken = encrypt(access_token);
+
       // 3️⃣ Save PlaidItem
       const plaidItem = await this.prisma.plaidItem.create({
         data: {
           userId,
-          accessToken: access_token,
+          accessToken: encryptedToken,
           itemId: item_id,
           institution: institutionName,
           status: 'active',
@@ -132,15 +138,25 @@ export class PlaidService {
 
       return {
         plaidItem,
-        accessToken: response.data.access_token,
+        encryptedToken,
         itemId: response.data.item_id,
       };
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          const target = error.meta?.target as string[] | undefined;
+          if (target?.includes('accountId')) {
+            throw new Error('This bank account is already linked.');
+          }
+        }
+      }
+
       this.logger.error('Error exchanging public token:', error);
       throw error;
     }
   }
   // get accounts for the plaid
+
   async getAccounts(accessToken: string) {
     try {
       const request: AccountsGetRequest = {

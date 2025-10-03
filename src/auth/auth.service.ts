@@ -12,6 +12,7 @@ import { LoginDto } from './dtos/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { TwilioService } from 'src/twilio/twilio.service';
 import * as bcrypt from 'bcrypt';
+import { decrypt } from 'src/utils/crypto.util';
 
 @Injectable()
 export class AuthService {
@@ -233,9 +234,19 @@ export class AuthService {
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
 
+    // 🔎 Fetch PlaidItem (if exists)
+    const plaidItem = await this.prisma.plaidItem.findFirst({
+      where: { userId: user.id },
+    });
+    let plaidAccessToken: string | null = null;
+    if (plaidItem) {
+      plaidAccessToken = decrypt(plaidItem.accessToken);
+    }
+
     return {
       message: 'PIN set successfully.',
       access_token: token,
+      plaidAccessToken,
       user: {
         id: user.id,
         name: user.name,
