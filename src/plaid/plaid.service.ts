@@ -138,7 +138,7 @@ export class PlaidService {
 
       return {
         plaidItem,
-        encryptedToken,
+        access_token: encryptedToken,
         itemId: response.data.item_id,
       };
     } catch (error) {
