@@ -256,33 +256,29 @@ export class AuthService {
     };
   }
 
-  async verifyPin(phoneNumber: string, pin: string) {
+  async verifyPin(phoneNumber: string, userpin: string) {
     const user = await this.prisma.user.findUnique({
       where: { phoneNumber },
     });
+    console.log('🚀 ~ AuthService ~ verifyPin ~ user:', user);
 
     if (!user || !user.pin) {
       throw new UnauthorizedException('PIN not set or user not found');
     }
 
-    const isValid = await bcrypt.compare(pin, user.pin);
+    const isValid = await bcrypt.compare(userpin, user.pin);
     if (!isValid) {
       throw new UnauthorizedException('Invalid PIN');
     }
 
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
+    const { pin, stripeConnectId, otpExpiresAt, otpCode, ...other } = user;
 
     return {
       message: 'Login successful',
       access_token: token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        profilePic: user.profilePic,
-      },
+      user: other,
     };
   }
 }
