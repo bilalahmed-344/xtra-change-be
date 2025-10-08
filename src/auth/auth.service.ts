@@ -271,6 +271,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid PIN');
     }
 
+     // 🔎 Fetch PlaidItem (if exists)
+    const plaidItem = await this.prisma.plaidItem.findFirst({
+      where: { userId: user.id },
+    });
+    let plaidAccessToken: string | null = null;
+    if (plaidItem) {
+      plaidAccessToken = plaidItem.accessToken;
+    }
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
     const { pin, stripeConnectId, otpExpiresAt, otpCode, ...other } = user;
@@ -278,6 +286,7 @@ export class AuthService {
     return {
       message: 'Login successful',
       access_token: token,
+      plaidAccessToken,
       user: other,
     };
   }
