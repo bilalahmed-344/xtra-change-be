@@ -15,12 +15,20 @@ export class UserService {
       where: { id },
     });
 
+      const plaidItem = await this.prisma.plaidItem.findFirst({
+      where: { userId: id },
+    });
+    let plaidAccessToken: string | null = null;
+    if (plaidItem) {
+      plaidAccessToken = plaidItem.accessToken;
+    }
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const { stripeCustomerId, ...otherUser } = user;
+    const {  otpCode,otpExpiresAt,pin,...otherUser } = user;
 
-    return otherUser;
+    return {plaidAccessToken,...otherUser};
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
