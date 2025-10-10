@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import {
@@ -189,93 +184,184 @@ export class PlaidService {
     }
   }
 
+  // async getTransactions(
+  //   userId: string,
+  //   startDate?: string,
+  //   endDate?: string,
+  //   page: number = 1,
+  //   limit: number = 20,
+  // ) {
+  //   try {
+  //     const plaidItem = await this.prisma.plaidItem.findFirst({
+  //       where: { userId },
+  //     });
+
+  //     if (!plaidItem) {
+  //       throw new BadRequestException('Plaid item not found for user');
+  //     }
+
+  //     const today = new Date();
+  //     const defaultEnd = today.toISOString().split('T')[0];
+  //     const defaultStart = new Date(today.setDate(today.getDate() - 30))
+  //       .toISOString()
+  //       .split('T')[0];
+  //     const accessToken = decrypt(plaidItem.accessToken);
+  //     const request: TransactionsGetRequest = {
+  //       access_token: accessToken,
+  //       start_date: startDate || defaultStart,
+  //       end_date: endDate || defaultEnd,
+  //       options: {
+  //         offset: (page - 1) * limit,
+  //         count: limit,
+  //       },
+  //     };
+
+  //     const response = await this.plaidClient.transactionsGet(request);
+  //     const transactions = response?.data?.transactions || [];
+
+  //     const total = response.data.total_transactions;
+  //     // Save or update transactions in DB
+  //     for (const tx of transactions) {
+  //       const isDebit = (() => {
+  //         // primary: amount sign
+  //         if (typeof tx.amount === 'number') {
+  //           if (tx.amount > 0) return true; // money leaving account
+  //           if (tx.amount < 0) return false; // money entering account
+  //         }
+  //         // fallback: transaction_type if present (DEBIT / CREDIT / MEMO)
+  //         if (tx.transaction_type) {
+  //           const tType = String(tx.transaction_type).toUpperCase();
+  //           return tType === 'DEBIT' || tType === 'MEMO';
+  //         }
+  //         // Fallback default: skip if uncertain
+  //         return false;
+  //       })();
+
+  //       if (!isDebit) {
+  //         // skip credits / incoming transfers
+  //         continue;
+  //       }
+  //       // Find related PlaidAccount in DB
+  //       const account = await this.prisma.plaidAccount.findUnique({
+  //         where: { accountId: tx.account_id },
+  //         include: { plaidItem: true },
+  //       });
+
+  //       if (!account) {
+  //         this.logger.warn(`Account ${tx.account_id} not found, skipping tx.`);
+  //         continue;
+  //       }
+
+  //       // Upsert transaction
+  //       const plaidTx = await this.prisma.plaidTransaction.upsert({
+  //         where: { transactionId: tx.transaction_id },
+  //         update: {
+  //           date: new Date(tx.date),
+  //           name: tx.name,
+  //           amount: tx.amount,
+  //           category: tx.category?.join(', ') || null,
+  //         },
+  //         create: {
+  //           plaidAccountId: account.id,
+  //           transactionId: tx.transaction_id,
+  //           date: new Date(tx.date),
+  //           name: tx.name,
+  //           amount: tx.amount,
+  //           category: tx.category?.join(', ') || null,
+  //         },
+  //       });
+
+  //       // 2 Calculate RoundUp
+  //       const roundUpCents = calculateRoundUp(toCents(tx.amount));
+  //       const roundUpAmount = roundUpCents / 100;
+
+  //       if (roundUpAmount > 0) {
+  //         // 3️⃣ Save RoundUpTransaction (skip if already exists)
+  //         await this.prisma.roundUpTransaction.upsert({
+  //           where: { plaidTransactionId: plaidTx.id },
+  //           update: { roundUpAmount },
+  //           create: {
+  //             userId: account.plaidItem.userId,
+  //             plaidTransactionId: plaidTx.id,
+  //             roundUpAmount,
+  //           },
+  //         });
+  //       }
+  //     }
+
+  //     return {
+  //       transactions,
+  //       metadata: {
+  //         page,
+  //         limit,
+  //         total,
+  //         totalPages: Math.ceil(total / limit),
+  //       },
+  //     };
+  //   } catch (error) {
+  //     if (error.response?.data?.error_code === 'INVALID_ACCESS_TOKEN') {
+  //       throw new UnauthorizedException('Invalid Plaid access token');
+  //     }
+  //     this.logger.error('Error fetching transactions:', error);
+  //     throw new BadRequestException('Failed to fetch transactions from Plaid');
+  //   }
+  // }
   async getTransactions(
     userId: string,
     startDate?: string,
     endDate?: string,
-    page: number = 1,
-    limit: number = 20,
+    page = 1,
+    limit = 20,
   ) {
     try {
-      const plaidItem = await this.prisma.plaidItem.findFirst({
-        where: { userId },
+      const dateFilter: any = {};
+      if (startDate) dateFilter.gte = new Date(startDate);
+      if (endDate) dateFilter.lte = new Date(endDate);
+
+      // Step 1: Find all PlaidAccounts linked to user's PlaidItems
+      const accounts = await this.prisma.plaidAccount.findMany({
+        where: { plaidItem: { userId } },
+        select: { id: true },
       });
 
-      if (!plaidItem) {
-        throw new BadRequestException('Plaid item not found for user');
+      if (accounts.length === 0) {
+        throw new BadRequestException('No Plaid accounts found for this user');
       }
 
-      const today = new Date();
-      const defaultEnd = today.toISOString().split('T')[0];
-      const defaultStart = new Date(today.setDate(today.getDate() - 30))
-        .toISOString()
-        .split('T')[0];
-      const accessToken = decrypt(plaidItem.accessToken);
-      const request: TransactionsGetRequest = {
-        access_token: accessToken,
-        start_date: startDate || defaultStart,
-        end_date: endDate || defaultEnd,
-        options: {
-          offset: (page - 1) * limit,
-          count: limit,
-        },
-      };
+      const accountIds = accounts.map((a) => a.id);
 
-      const response = await this.plaidClient.transactionsGet(request);
-      const transactions = response?.data?.transactions || [];
-
-      const total = response.data.total_transactions;
-      // Save or update transactions in DB
-      for (const tx of transactions) {
-        // Find related PlaidAccount in DB
-        const account = await this.prisma.plaidAccount.findUnique({
-          where: { accountId: tx.account_id },
-          include: { plaidItem: true },
-        });
-
-        if (!account) {
-          this.logger.warn(`Account ${tx.account_id} not found, skipping tx.`);
-          continue;
-        }
-
-        // Upsert transaction
-        const plaidTx = await this.prisma.plaidTransaction.upsert({
-          where: { transactionId: tx.transaction_id },
-          update: {
-            date: new Date(tx.date),
-            name: tx.name,
-            amount: tx.amount,
-            category: tx.category?.join(', ') || null,
+      // Step 2: Get transactions from those accounts
+      const [transactions, total] = await Promise.all([
+        this.prisma.plaidTransaction.findMany({
+          where: {
+            plaidAccountId: { in: accountIds },
+            date: Object.keys(dateFilter).length ? dateFilter : undefined,
+            amount: { gt: 0 },
           },
-          create: {
-            plaidAccountId: account.id,
-            transactionId: tx.transaction_id,
-            date: new Date(tx.date),
-            name: tx.name,
-            amount: tx.amount,
-            category: tx.category?.join(', ') || null,
-          },
-        });
-
-        // 2 Calculate RoundUp
-        const roundUpCents = calculateRoundUp(toCents(tx.amount));
-        const roundUpAmount = roundUpCents / 100;
-
-        if (roundUpAmount > 0) {
-          // 3️⃣ Save RoundUpTransaction (skip if already exists)
-          await this.prisma.roundUpTransaction.upsert({
-            where: { plaidTransactionId: plaidTx.id },
-            update: { roundUpAmount },
-            create: {
-              userId: account.plaidItem.userId,
-              plaidTransactionId: plaidTx.id,
-              roundUpAmount,
+          include: {
+            account: {
+              select: {
+                name: true,
+                type: true,
+                plaidItem: { select: { institution: true } },
+              },
             },
-          });
-        }
-      }
+          },
+          orderBy: { date: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.plaidTransaction.count({
+          where: {
+            plaidAccountId: { in: accountIds },
+            date: Object.keys(dateFilter).length ? dateFilter : undefined,
+            amount: { gt: 0 },
+          },
+        }),
+      ]);
 
       return {
+        userId,
         transactions,
         metadata: {
           page,
@@ -285,23 +371,8 @@ export class PlaidService {
         },
       };
     } catch (error) {
-      if (error.response?.data?.error_code === 'INVALID_ACCESS_TOKEN') {
-        throw new UnauthorizedException('Invalid Plaid access token');
-      }
-      this.logger.error('Error fetching transactions:', error);
-      throw new BadRequestException('Failed to fetch transactions from Plaid');
+      this.logger.error('Error fetching transactions from DB:', error);
+      throw new BadRequestException('Failed to fetch transactions');
     }
-  }
-
-  async getPendingRoundUpTotal(userId: string) {
-    const result = await this.prisma.roundUpTransaction.aggregate({
-      _sum: { roundUpAmount: true },
-      where: {
-        userId,
-        status: 'PENDING',
-      },
-    });
-
-    return result._sum.roundUpAmount ?? 0;
   }
 }

@@ -14,9 +14,12 @@ import { PlaidModule } from './plaid/plaid.module';
 import { TwilioModule } from './twilio/twilio.module';
 import { RoundupTestModule } from './roundup-test/roundup-test.module';
 import { WithdrawModule } from './withdraw/withdraw.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { RoundUpTransactionModule } from './round-up-transaction/round-up-transaction.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     MulterModule.registerAsync({
       useClass: CloudinaryConfigService,
@@ -31,6 +34,7 @@ import { WithdrawModule } from './withdraw/withdraw.module';
     TwilioModule,
     RoundupTestModule,
     WithdrawModule,
+    RoundUpTransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
