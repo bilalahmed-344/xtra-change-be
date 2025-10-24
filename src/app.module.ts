@@ -16,6 +16,7 @@ import { RoundupTestModule } from './roundup-test/roundup-test.module';
 import { WithdrawModule } from './withdraw/withdraw.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RoundUpTransactionModule } from './round-up-transaction/round-up-transaction.module';
+import { IdenfyModule } from './idenfy/idenfy.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { RoundUpTransactionModule } from './round-up-transaction/round-up-transa
     RoundupTestModule,
     WithdrawModule,
     RoundUpTransactionModule,
+    IdenfyModule,
   ],
   controllers: [AppController],
   providers: [AppService],
