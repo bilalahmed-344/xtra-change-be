@@ -1,9 +1,11 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 import { AxiosError } from 'axios';
 import { WebhookDto } from './dto/webhook.dto';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { UpdateKycStatusDto } from './dto/update-kyc-status.dto';
 
 @Injectable()
 export class IdenfyService {
@@ -15,6 +17,7 @@ export class IdenfyService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
   ) {
     this.apiKey = this.configService.get<string>('DENFY_API_KEY')!;
     this.apiSecret = this.configService.get<string>('DENFY_API_SECRET')!;
@@ -25,7 +28,9 @@ export class IdenfyService {
   }
 
   async createSession(userId: string, metadata?: Record<string, any>) {
-    console.log(this.apiKey, this.apiSecret, this.apiBase, this.callbackUrl);
+    // Confirm that user exists
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new HttpException('User not found', 404);
     try {
       const payload = {
         clientId: userId,
@@ -43,7 +48,10 @@ export class IdenfyService {
         }),
       );
 
-      return { authToken: response?.data?.authToken };
+      const authToken = response?.data?.authToken;
+      if (!authToken) throw new HttpException('Auth token not received', 500);
+
+      return { authToken };
     } catch (error) {
       const err = error as AxiosError;
       console.error(
@@ -65,5 +73,15 @@ export class IdenfyService {
     // await this.userRepository.update({ id: userId }, { kycStatus: status });
 
     return { success: true };
+  }
+
+  async updateKycStatus(id: string, updateKycStatusDto: UpdateKycStatusDto) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { kycVerified: updateKycStatusDto.verified },
+    });
   }
 }
