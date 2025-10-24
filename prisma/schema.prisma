@@ -19,8 +19,7 @@ model User {
   address     String?   
   gender     String?
   profilePic String? 
-  idCardFrontSide String?    
-  idCardBackSide String?    
+  kycVerified         Boolean   @default(false) // ✅ by default false
   otpCode     String?
   otpExpiresAt DateTime?
   pin          String? 
