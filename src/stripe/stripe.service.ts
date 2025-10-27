@@ -116,7 +116,8 @@ export class StripeService {
       invoice_settings: { default_payment_method: paymentMethodId },
     });
 
-    const paymentMethod = await this.stripe.paymentMethods.retrieve(paymentMethodId);
+    const paymentMethod =
+      await this.stripe.paymentMethods.retrieve(paymentMethodId);
 
     // Save in DB
     await this.prisma.card.updateMany({
@@ -137,7 +138,6 @@ export class StripeService {
       },
     });
   }
-
 
   async detachCard(paymentMethodId: string) {
     try {
@@ -162,6 +162,7 @@ export class StripeService {
       payment_method: cardId,
       off_session: true,
       confirm: true,
+      description: 'Round-up investment charge',
     });
   }
 
@@ -226,5 +227,16 @@ export class StripeService {
       customer: customerId,
       payment_method_types: ['card'],
     });
+  }
+  async retrievePayout(connectAccountId: string, payoutId: string) {
+    try {
+      return await this.stripe.payouts.retrieve(payoutId, {
+        stripeAccount: connectAccountId,
+      });
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to retrieve payout: ${error.message}`,
+      );
+    }
   }
 }
