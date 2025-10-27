@@ -36,40 +36,38 @@ export class WithdrawService {
       throw new BadRequestException('Withdrawal amount must be positive');
     }
 
-    // 1. Ensure user has a Stripe Connect account
+    // Ensure user has a Stripe Connect account
     const connectAccountId = await this.stripeService.getOrCreateConnectAccount(
       user.id,
     );
 
     try {
-      // 2. Attach bank account
+      // Attach bank account
       await this.stripeService.addExternalBankAccount(connectAccountId, {
         name: dto.name,
         routingNumber: dto.routingNumber,
         accountNumber: dto.accountNumber,
       });
 
-      // 3. Create payout
+      // Create payout
       const payout = await this.stripeService.createPayout(
         connectAccountId,
         dto.amount,
       );
 
-      // 4. Save withdrawal in DB
+      //  Save withdrawal in DB
       const withdrawal = await this.prisma.withdrawal.create({
         data: {
           userId,
           amount: dto.amount,
           status: 'PROCESSING',
           failureReason: null,
-          // optional: store payoutId for tracking
-          // stripePayoutId: payout.id,
+          stripePayoutId: payout.id,
+          stripeAccountId: connectAccountId,
+          requestedAt: new Date(),
+          processedAt: new Date(),
         },
       });
-
-      this.logger.log(
-        `💸 Withdrawal requested: $${dto.amount} for user ${userId}`,
-      );
 
       return {
         success: true,
@@ -98,5 +96,57 @@ export class WithdrawService {
         withdrawal: failedWithdrawal,
       });
     }
+  }
+
+  async checkWithdrawalStatus(withdrawalId: string) {
+    const withdrawal = await this.prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+    });
+
+    if (!withdrawal) throw new NotFoundException('Withdrawal not found');
+    if (!withdrawal.stripePayoutId || !withdrawal.stripeAccountId) {
+      throw new BadRequestException('Missing payout or account details');
+    }
+
+    const payout = await this.stripeService.retrievePayout(
+      withdrawal.stripeAccountId,
+      withdrawal.stripePayoutId,
+    );
+
+    let newStatus = withdrawal.status;
+    let completedAt = withdrawal.completedAt;
+    let failureReason = withdrawal.failureReason;
+
+    switch (payout.status) {
+      case 'paid':
+        newStatus = 'COMPLETED';
+        completedAt = new Date();
+        break;
+      case 'failed':
+      case 'canceled':
+        newStatus = 'FAILED';
+        failureReason =
+          typeof payout.failure_balance_transaction === 'string'
+            ? payout.failure_balance_transaction
+            : payout.failure_message || null;
+        break;
+      default:
+        newStatus = 'PROCESSING';
+    }
+
+    const updated = await this.prisma.withdrawal.update({
+      where: { id: withdrawalId },
+      data: {
+        status: newStatus,
+        completedAt,
+        failureReason,
+      },
+    });
+
+    return {
+      message: `Withdrawal status updated to ${newStatus}`,
+      payout,
+      updated,
+    };
   }
 }
