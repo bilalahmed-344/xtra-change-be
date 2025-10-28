@@ -63,4 +63,39 @@ export class RoundUpTransactionService {
       //   transactions,
     };
   }
+
+  async getAllTransactions(userId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+
+    const [transactions, totalCount] = await Promise.all([
+      this.prisma.roundUpTransaction.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phoneNumber: true,
+            },
+          },
+        },
+      }),
+      this.prisma.roundUpTransaction.count({
+        where: { userId },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      page,
+      limit,
+      totalPages,
+      totalCount,
+      transactions,
+    };
+  }
 }
