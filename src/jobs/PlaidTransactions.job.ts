@@ -8,6 +8,7 @@ import {
   TransactionsGetRequest,
 } from 'plaid';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { StripeService } from 'src/stripe/stripe.service';
 import { decrypt } from 'src/utils/crypto.util';
 import { calculateRoundUp, toCents } from 'src/utils/roundup';
 
@@ -19,6 +20,7 @@ export class PlaidTransactionsJob {
   constructor(
     private readonly prisma: PrismaService,
     private configService: ConfigService,
+    private readonly stripeService: StripeService,
   ) {
     const configuration = new Configuration({
       basePath: this.getPlaidEnvironment(),
@@ -61,7 +63,7 @@ export class PlaidTransactionsJob {
       for (const item of user.plaidItems) {
         try {
           const accessToken = decrypt(item.accessToken);
-          await this.syncTransactionsForItem(user.id, accessToken);
+          await this.syncTransactionsForItem(user, accessToken);
         } catch (err) {
           this.logger.error(
             `❌ Failed to sync transactions for ${user.id}`,
@@ -74,7 +76,8 @@ export class PlaidTransactionsJob {
     this.logger.log('✅ Finished Plaid transactions sync job.');
   }
 
-  private async syncTransactionsForItem(userId: string, accessToken: string) {
+  private async syncTransactionsForItem(user: any, accessToken: string) {
+    const { id: userId } = user;
     const roundUpSetting = await this.prisma.roundUpSetting.findUnique({
       where: { userId },
     });
@@ -153,26 +156,88 @@ export class PlaidTransactionsJob {
         },
       });
 
+      const amount = Number(tx.amount);
+      const detectedAmount = amount + roundUpAmount;
+      console.log(
+        '🚀 ~ PlaidTransactionsJob ~ syncTransactionsForItem ~ detectedAmount:',
+        detectedAmount,
+      );
+
       // Adjust for remaining limit
       const allowedRoundUp = Math.min(roundUpAmount, remainingLimit);
       remainingLimit -= allowedRoundUp;
 
-      await this.prisma.roundUpTransaction.upsert({
-        where: { plaidTransactionId: plaidTx.id },
-        update: { roundUpAmount: allowedRoundUp },
-        create: {
-          userId: account.plaidItem.userId,
-          plaidTransactionId: plaidTx.id,
-          roundUpAmount: allowedRoundUp,
-        },
-      });
+      // await this.prisma.roundUpTransaction.upsert({
+      //   where: { plaidTransactionId: plaidTx.id },
+      //   update: { roundUpAmount: allowedRoundUp },
+      //   create: {
+      //     userId: account.plaidItem.userId,
+      //     plaidTransactionId: plaidTx.id,
+      //     roundUpAmount: allowedRoundUp,
+      //     detectedAmount: detectedAmount,
+      //   },
+      // });
 
-      this.logger.log(
-        `💰 Added roundup $${allowedRoundUp.toFixed(2)} (remaining limit: $${remainingLimit.toFixed(2)})`,
-      );
+      // Fetch user's default card (assuming stored in DB)
+      // const defaultCard = await this.prisma.card.findFirst({
+      //   where: { userId, isDefault: true },
+      // });
+
+      // if (!defaultCard?.stripeCardId) {
+      //   this.logger.warn(`User ${userId} has no default card`);
+      //   return;
+      // }
+      try {
+        // Charge via Stripe
+        // const paymentIntent = await this.stripeService.createPaymentIntent(
+        //   Math.round(detectedAmount * 100),
+        //   user.stripeCustomerId,
+        //   defaultCard.stripeCardId,
+        // );
+        await this.prisma.roundUpTransaction.upsert({
+          where: { plaidTransactionId: plaidTx.id },
+          update: {
+            roundUpAmount,
+            detectedAmount,
+            // status: 'INVESTED',
+          },
+          create: {
+            userId,
+            plaidTransactionId: plaidTx.id,
+            roundUpAmount,
+            detectedAmount,
+            // status: 'INVESTED',
+          },
+        });
+
+        this.logger.log(
+          `💸 Charged $${detectedAmount.toFixed(2)} (txn $${tx.amount}, round-up $${roundUpAmount})`,
+        );
+      } catch (error) {
+        await this.prisma.roundUpTransaction.upsert({
+          where: { plaidTransactionId: plaidTx.id },
+          update: {
+            roundUpAmount,
+            detectedAmount,
+            status: 'FAILED',
+            failureReason: error.message,
+          },
+          create: {
+            userId,
+            plaidTransactionId: plaidTx.id,
+            roundUpAmount,
+            detectedAmount,
+            status: 'FAILED',
+            failureReason: error.message,
+          },
+        });
+
+        this.logger.log(
+          `💰 Added roundup $${allowedRoundUp.toFixed(2)} (remaining limit: $${remainingLimit.toFixed(2)})`,
+        );
+      }
     }
   }
-
   private getStartDateByFrequency(frequency: string): Date {
     const now = new Date();
     const start = new Date(now);

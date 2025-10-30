@@ -239,4 +239,18 @@ export class StripeService {
       );
     }
   }
+
+  async createPaymentIntent(
+    amount: number,
+    customerId: string,
+    paymentMethodId: string,
+  ) {
+    return await this.stripe.paymentIntents.create({
+      amount,
+      currency: 'usd',
+      customer: customerId,
+      payment_method: paymentMethodId,
+      confirm: true,
+    });
+  }
 }
