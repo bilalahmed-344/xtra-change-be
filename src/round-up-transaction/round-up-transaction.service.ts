@@ -81,19 +81,26 @@ export class RoundUpTransactionService {
               phoneNumber: true,
             },
           },
+          plaidTransaction: {
+            // 👈 include PlaidTransaction relation
+            select: {
+              id: true,
+              transactionId: true,
+              amount: true,
+              name: true,
+              date: true,
+              category: true,
+            },
+          },
         },
       }),
-      this.prisma.roundUpTransaction.count({
-        where: { userId },
-      }),
+      this.prisma.roundUpTransaction.count({ where: { userId } }),
     ]);
-
-    const totalPages = Math.ceil(totalCount / limit);
 
     return {
       page,
       limit,
-      totalPages,
+      totalPages: Math.ceil(totalCount / limit),
       totalCount,
       transactions,
     };
