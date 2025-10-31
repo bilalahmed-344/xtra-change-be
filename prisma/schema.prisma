@@ -64,6 +64,9 @@ model RoundUpSetting {
   paymentFrequency PaymentFrequency @default(DAILY)
   roundUpLimit     Float? 
 
+  lastRunAt        DateTime?
+  nextRunAt        DateTime?
+
   destination RoundUpDestination @default(SAVINGS)
   
   createdAt   DateTime @default(now())

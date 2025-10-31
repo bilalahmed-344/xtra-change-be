@@ -84,6 +84,20 @@ export class PlaidTransactionsJob {
 
     if (!roundUpSetting || !roundUpSetting.enabled) return;
 
+    const now = new Date();
+    const nextRunAt = this.getNextRunDateByFrequency(
+      roundUpSetting.paymentFrequency,
+      now,
+    );
+
+    await this.prisma.roundUpSetting.update({
+      where: { userId },
+      data: {
+        lastRunAt: now,
+        nextRunAt,
+      },
+    });
+
     const startDateObj = this.getStartDateByFrequency(
       roundUpSetting.paymentFrequency,
     );
@@ -158,10 +172,6 @@ export class PlaidTransactionsJob {
 
       const amount = Number(tx.amount);
       const detectedAmount = amount + roundUpAmount;
-      console.log(
-        '🚀 ~ PlaidTransactionsJob ~ syncTransactionsForItem ~ detectedAmount:',
-        detectedAmount,
-      );
 
       // Adjust for remaining limit
       const allowedRoundUp = Math.min(roundUpAmount, remainingLimit);
@@ -179,14 +189,14 @@ export class PlaidTransactionsJob {
       // });
 
       // Fetch user's default card (assuming stored in DB)
-      // const defaultCard = await this.prisma.card.findFirst({
-      //   where: { userId, isDefault: true },
-      // });
+      const defaultCard = await this.prisma.card.findFirst({
+        where: { userId, isDefault: true },
+      });
 
-      // if (!defaultCard?.stripeCardId) {
-      //   this.logger.warn(`User ${userId} has no default card`);
-      //   return;
-      // }
+      if (!defaultCard?.stripeCardId) {
+        this.logger.warn(`User ${userId} has no default card`);
+        return;
+      }
       try {
         // Charge via Stripe
         // const paymentIntent = await this.stripeService.createPaymentIntent(
@@ -260,5 +270,26 @@ export class PlaidTransactionsJob {
     }
 
     return start;
+  }
+
+  private getNextRunDateByFrequency(frequency: string, fromDate: Date): Date {
+    const next = new Date(fromDate);
+
+    switch (frequency) {
+      case 'DAILY':
+        next.setDate(next.getDate() + 1);
+        break;
+      case 'WEEKLY':
+        next.setDate(next.getDate() + 7);
+        break;
+      case 'MONTHLY':
+        next.setMonth(next.getMonth() + 1);
+        break;
+      default:
+        next.setDate(next.getDate() + 1);
+    }
+
+    next.setHours(0, 0, 0, 0);
+    return next;
   }
 }
