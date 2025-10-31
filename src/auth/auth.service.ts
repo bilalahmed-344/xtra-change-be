@@ -230,6 +230,9 @@ export class AuthService {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { pin: hashedPin },
+      include: {
+        roundUpSetting: true,
+      },
     });
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
@@ -242,6 +245,7 @@ export class AuthService {
     if (plaidItem) {
       plaidAccessToken = plaidItem.accessToken;
     }
+    const roundUpEnabled = user.roundUpSetting?.enabled ?? false;
 
     return {
       message: 'PIN set successfully.',
@@ -252,6 +256,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        roundUpEnabled,
       },
     };
   }
@@ -259,8 +264,10 @@ export class AuthService {
   async verifyPin(phoneNumber: string, userpin: string) {
     const user = await this.prisma.user.findUnique({
       where: { phoneNumber },
+      include: {
+        roundUpSetting: true,
+      },
     });
-    console.log('🚀 ~ AuthService ~ verifyPin ~ user:', user);
 
     if (!user || !user.pin) {
       throw new UnauthorizedException('PIN not set or user not found');
@@ -271,7 +278,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid PIN');
     }
 
-     // 🔎 Fetch PlaidItem (if exists)
+    // 🔎 Fetch PlaidItem (if exists)
     const plaidItem = await this.prisma.plaidItem.findFirst({
       where: { userId: user.id },
     });
@@ -283,10 +290,12 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
     const { pin, stripeConnectId, otpExpiresAt, otpCode, ...other } = user;
 
+    const roundUpEnabled = user.roundUpSetting?.enabled ?? false;
+
     return {
       message: 'Login successful',
       access_token: token,
-      user: {plaidAccessToken,...other},
+      user: { plaidAccessToken, ...other, roundUpEnabled },
     };
   }
 }

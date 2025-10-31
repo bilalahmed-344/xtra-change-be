@@ -82,7 +82,6 @@ export class RoundUpTransactionService {
             },
           },
           plaidTransaction: {
-            // 👈 include PlaidTransaction relation
             select: {
               id: true,
               transactionId: true,
