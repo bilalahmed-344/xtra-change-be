@@ -28,12 +28,18 @@ export class RoundUpTransactionController {
     @Req() req,
     @Query('page') page = '1',
     @Query('limit') limit = '10',
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     const userId = req.user.id;
     return this.roundUpTransactionService.getAllTransactions(
       userId,
       Number(page),
       Number(limit),
+      status,
+      startDate,
+      endDate,
     );
   }
 }

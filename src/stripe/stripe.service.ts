@@ -240,17 +240,60 @@ export class StripeService {
     }
   }
 
-  async createPaymentIntent(
-    amount: number,
-    customerId: string,
-    paymentMethodId: string,
-  ) {
-    return await this.stripe.paymentIntents.create({
+  // async createPaymentIntent(
+  //   amount: number,
+  //   customerId: string,
+  //   paymentMethodId: string,
+  // ) {
+  //   return await this.stripe.paymentIntents.create({
+  //     amount,
+  //     currency: 'usd',
+  //     customer: customerId,
+  //     payment_method: paymentMethodId,
+  //     confirm: true,
+  //   });
+  // }
+  async createPaymentIntent({
+    amount,
+    customerId,
+    paymentMethodId,
+    returnUrl,
+  }: {
+    amount: number; // cents
+    customerId: string;
+    paymentMethodId: string;
+    returnUrl?: string; // optional, used if a redirect is needed
+  }) {
+    // Prefer to create as off_session with automatic_payment_methods disallowing redirects
+    // so Stripe won't attempt redirect-based methods in a server-side flow.
+    const params: Stripe.PaymentIntentCreateParams = {
       amount,
       currency: 'usd',
       customer: customerId,
       payment_method: paymentMethodId,
+      off_session: true,
       confirm: true,
-    });
+      description: 'Round-up investment charge',
+      // Try to prevent redirect-based payment methods from being used:
+      automatic_payment_methods: {
+        enabled: true,
+        // @ts-ignore allow_redirects may not be typed in your Stripe version
+        allow_redirects: 'never',
+      } as any,
+    };
+
+    // If you *do* want to allow redirects (e.g. for web flows), provide return_url:
+    if (returnUrl) {
+      // If you set return_url, Stripe may perform a redirect for SCA flows.
+      (params as any).return_url = returnUrl;
+    }
+
+    try {
+      const pi = await this.stripe.paymentIntents.create(params);
+      return pi;
+    } catch (err) {
+      // bubble up with message for caller to handle and save
+      throw err;
+    }
   }
 }
