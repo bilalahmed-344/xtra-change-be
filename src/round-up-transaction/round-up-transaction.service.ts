@@ -9,7 +9,7 @@ export class RoundUpTransactionService {
     const total = await this.prisma.roundUpTransaction.aggregate({
       where: {
         userId,
-        status: { in: ['PENDING', 'INVESTED'] },
+        status: 'INVESTED',
       },
       _sum: {
         roundUpAmount: true,
@@ -51,7 +51,7 @@ export class RoundUpTransactionService {
           gte: start,
           lte: now,
         },
-        status: { in: ['PENDING', 'INVESTED'] },
+        status: 'INVESTED',
       },
     });
 
@@ -64,8 +64,28 @@ export class RoundUpTransactionService {
     };
   }
 
-  async getAllTransactions(userId: string, page: number, limit: number) {
+  async getAllTransactions(
+    userId: string,
+    page: number,
+    limit: number,
+    status?: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
     const skip = (page - 1) * limit;
+
+    const where: any = { userId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (startDate && endDate) {
+      where.createdAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
 
     const [transactions, totalCount] = await Promise.all([
       this.prisma.roundUpTransaction.findMany({
