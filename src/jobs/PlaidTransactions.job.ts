@@ -58,9 +58,6 @@ export class PlaidTransactionsJob {
     const users = await this.prisma.user.findMany({
       include: { plaidItems: true },
     });
-    this.logger.log(
-      `🔄 Starting Plaid transactions sync job... ${users.length}`,
-    );
 
     for (const user of users) {
       for (const item of user.plaidItems) {
@@ -150,14 +147,25 @@ export class PlaidTransactionsJob {
 
       //  Check if this transaction has already been processed
 
-      const existingRoundUp = await this.prisma.roundUpTransaction.findUnique({
-        where: { plaidTransactionId: tx.transaction_id },
+      // const existingRoundUp = await this.prisma.roundUpTransaction.findUnique({
+      //   where: { plaidTransactionId: tx.transaction_id },
+      // });
+      const existingRoundUp = await this.prisma.roundUpTransaction.findFirst({
+        where: {
+          plaidTransaction: {
+            transactionId: tx.transaction_id, // check using Plaid's transaction ID
+          },
+        },
       });
+      console.log(
+        '🚀 ~ PlaidTransactionsJob ~ syncTransactionsForItem ~ existingRoundUp:',
+        existingRoundUp,
+      );
 
       // If it's already been charged (INVESTED or SUCCEEDED), skip it
       if (
         existingRoundUp &&
-        ['INVESTED', 'SUCCEEDED'].includes(existingRoundUp.status)
+        ['INVESTED', 'SUCCEEDED', 'FAILED'].includes(existingRoundUp.status)
       ) {
         this.logger.log(
           `⏭️ Skipping already processed transaction ${tx.transaction_id}`,
