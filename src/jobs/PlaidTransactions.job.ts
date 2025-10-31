@@ -157,10 +157,10 @@ export class PlaidTransactionsJob {
           },
         },
       });
-      console.log(
-        '🚀 ~ PlaidTransactionsJob ~ syncTransactionsForItem ~ existingRoundUp:',
-        existingRoundUp,
-      );
+      // console.log(
+      //   '🚀 ~ PlaidTransactionsJob ~ syncTransactionsForItem ~ existingRoundUp:',
+      //   existingRoundUp,
+      // );
 
       // If it's already been charged (INVESTED or SUCCEEDED), skip it
       if (
@@ -233,21 +233,6 @@ export class PlaidTransactionsJob {
           paymentMethodId: defaultCard.stripeCardId,
           // don't pass returnUrl for background charges (we block redirects above)
         });
-        // await this.prisma.roundUpTransaction.upsert({
-        //   where: { plaidTransactionId: plaidTx.id },
-        //   update: {
-        //     roundUpAmount,
-        //     detectedAmount,
-        //     status: 'INVESTED',
-        //   },
-        //   create: {
-        //     userId,
-        //     plaidTransactionId: plaidTx.id,
-        //     roundUpAmount,
-        //     detectedAmount,
-        //     status: 'INVESTED',
-        //   },
-        // });
 
         // PaymentIntent returned — inspect status
         if (paymentIntent.status === 'succeeded') {

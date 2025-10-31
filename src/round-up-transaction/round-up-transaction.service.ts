@@ -89,7 +89,7 @@ export class RoundUpTransactionService {
 
     const [transactions, totalCount] = await Promise.all([
       this.prisma.roundUpTransaction.findMany({
-        where: { userId },
+        where,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
