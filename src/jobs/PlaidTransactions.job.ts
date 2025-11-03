@@ -237,7 +237,6 @@ export class PlaidTransactionsJob {
           amount: Math.round(detectedAmount * 100),
           customerId: user.stripeCustomerId,
           paymentMethodId: defaultCard.stripeCardId,
-          // don't pass returnUrl for background charges (we block redirects above)
         });
 
         // PaymentIntent returned — inspect status
@@ -259,6 +258,17 @@ export class PlaidTransactionsJob {
               status: 'INVESTED',
               stripePaymentIntentId: paymentIntent.id,
               failureReason: null,
+            },
+          });
+
+          await this.prisma.chargedTransaction.create({
+            data: {
+              userId,
+              cardId: defaultCard.id,
+              plaidTransactionId: plaidTx.id,
+              chargedAmount: detectedAmount,
+              status: 'CHARGED',
+              stripePaymentIntentId: paymentIntent.id,
             },
           });
 
