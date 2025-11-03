@@ -13,9 +13,12 @@ export class UserService {
   async findOneById(id: string) {
     let user = await this.prisma.user.findUnique({
       where: { id },
+      include: {
+        roundUpSetting: true,
+      },
     });
 
-      const plaidItem = await this.prisma.plaidItem.findFirst({
+    const plaidItem = await this.prisma.plaidItem.findFirst({
       where: { userId: id },
     });
     let plaidAccessToken: string | null = null;
@@ -26,9 +29,11 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const {  otpCode,otpExpiresAt,pin,...otherUser } = user;
+    const roundUpEnabled = user.roundUpSetting?.enabled ?? false;
 
-    return {plaidAccessToken,...otherUser};
+    const { otpCode, otpExpiresAt, pin, ...otherUser } = user;
+
+    return { plaidAccessToken, ...otherUser, roundUpEnabled };
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
