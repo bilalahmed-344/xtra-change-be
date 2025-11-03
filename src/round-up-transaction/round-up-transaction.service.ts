@@ -51,7 +51,7 @@ export class RoundUpTransactionService {
           gte: start,
           lte: now,
         },
-        status: 'INVESTED',
+        status: 'PENDING',
       },
     });
 
