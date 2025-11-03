@@ -122,7 +122,6 @@ model PlaidTransaction {
 
   account PlaidAccount @relation(fields: [plaidAccountId], references: [id], onDelete: Cascade)
   roundUp        RoundUpTransaction?
-  chargedTransaction ChargedTransaction?
 }
 
 model RoundUpTransaction {
@@ -145,18 +144,16 @@ model RoundUpTransaction {
 model ChargedTransaction {
   id                  String   @id @default(uuid())
   userId              String
-  plaidTransactionId    String   @unique 
   chargedAmount       Float
   stripePaymentIntentId String?
   cardId               String?
   status              String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-
+  failureReason   String?
 
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   card                Card?             @relation(fields: [cardId], references: [id], onDelete: SetNull)
-  plaidTransaction    PlaidTransaction @relation(fields: [plaidTransactionId], references: [id], onDelete: Cascade)
 }
 
 model Withdrawal {

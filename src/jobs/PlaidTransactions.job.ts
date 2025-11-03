@@ -33,7 +33,6 @@ export class PlaidTransactionsJob {
     });
 
     this.plaidClient = new PlaidApi(configuration);
-    this.logger.log('🚀 PlaidService initialized');
   }
 
   private getPlaidEnvironment() {
@@ -56,14 +55,24 @@ export class PlaidTransactionsJob {
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
     const users = await this.prisma.user.findMany({
-      include: { plaidItems: true },
+      include: {
+        plaidItems: true,
+        roundUpSetting: true,
+        cards: { where: { isDefault: true } },
+      },
     });
 
     for (const user of users) {
+      const defaultCard = user.cards[0];
+      if (!defaultCard) {
+        this.logger.warn(`⚠️ User ${user.id} has no default card, skipping.`);
+        continue;
+      }
+
       for (const item of user.plaidItems) {
         try {
           const accessToken = decrypt(item.accessToken);
-          await this.syncTransactionsForItem(user, accessToken);
+          await this.syncTransactionsForItem(user, accessToken, defaultCard);
         } catch (err) {
           this.logger.error(
             `❌ Failed to sync transactions for ${user.id}`,
@@ -76,7 +85,11 @@ export class PlaidTransactionsJob {
     this.logger.log('✅ Finished Plaid transactions sync job.');
   }
 
-  private async syncTransactionsForItem(user: any, accessToken: string) {
+  private async syncTransactionsForItem(
+    user: any,
+    accessToken: string,
+    card: any,
+  ) {
     const { id: userId } = user;
     const roundUpSetting = await this.prisma.roundUpSetting.findUnique({
       where: { userId },
@@ -142,105 +155,103 @@ export class PlaidTransactionsJob {
       0,
     );
     const roundUpLimit = roundUpSetting.roundUpLimit ?? Infinity;
-
     let remainingLimit = roundUpLimit;
-    // this.logger.log(
-    //   `🧮 User ${userId} total roundups = $${totalRoundUp.toFixed(2)}, limit = $${roundUpLimit}`,
-    // );
 
-    for (const { tx, roundUpAmount } of allRoundUps) {
-      if (remainingLimit <= 0) break; // Stop once we hit limit
+    if (totalRoundUp <= 0) return;
 
-      //  Check if this transaction has already been processed
-
-      // const existingRoundUp = await this.prisma.roundUpTransaction.findUnique({
-      //   where: { plaidTransactionId: tx.transaction_id },
-      // });
-      const existingRoundUp = await this.prisma.roundUpTransaction.findFirst({
-        where: {
-          plaidTransaction: {
-            transactionId: tx.transaction_id, // check using Plaid's transaction ID
+    try {
+      const paymentIntent = await this.stripeService.createPaymentIntent({
+        amount: Math.round(totalRoundUp * 100),
+        customerId: user.stripeCustomerId,
+        paymentMethodId: card.stripeCardId,
+      });
+      if (paymentIntent.status === 'succeeded') {
+        // Create charged transaction record
+        await this.prisma.chargedTransaction.create({
+          data: {
+            userId,
+            cardId: card.id,
+            chargedAmount: totalRoundUp,
+            status:
+              paymentIntent.status === 'succeeded'
+                ? 'CHARGED'
+                : paymentIntent.status === 'requires_payment_method'
+                  ? 'FAILED'
+                  : 'PENDING',
+            stripePaymentIntentId: paymentIntent.id,
+            failureReason:
+              paymentIntent.status === 'succeeded'
+                ? null
+                : paymentIntent.last_payment_error?.message ||
+                  'Unknown failure',
           },
-        },
-      });
-      // console.log(
-      //   '🚀 ~ PlaidTransactionsJob ~ syncTransactionsForItem ~ existingRoundUp:',
-      //   existingRoundUp,
-      // );
-
-      // If it's already been charged (INVESTED or SUCCEEDED), skip it
-      if (
-        existingRoundUp &&
-        ['INVESTED', 'SUCCEEDED', 'FAILED'].includes(existingRoundUp.status)
-      ) {
-        this.logger.log(
-          `⏭️ Skipping already processed transaction ${tx.transaction_id}`,
-        );
-        continue;
-      }
-
-      const account = await this.prisma.plaidAccount.findUnique({
-        where: { accountId: tx.account_id },
-        include: { plaidItem: true },
-      });
-      if (!account) continue;
-
-      // Save PlaidTransaction
-      const plaidTx = await this.prisma.plaidTransaction.upsert({
-        where: { transactionId: tx.transaction_id },
-        update: {
-          name: tx.name,
-          amount: tx.amount,
-          date: new Date(tx.date),
-          category: tx.category?.join(', ') || null,
-        },
-        create: {
-          plaidAccountId: account.id,
-          transactionId: tx.transaction_id,
-          name: tx.name,
-          amount: tx.amount,
-          date: new Date(tx.date),
-          category: tx.category?.join(', ') || null,
-        },
-      });
-
-      const amount = Number(tx.amount);
-      const detectedAmount = amount + roundUpAmount;
-
-      // Adjust for remaining limit
-      const allowedRoundUp = Math.min(roundUpAmount, remainingLimit);
-      remainingLimit -= allowedRoundUp;
-
-      // await this.prisma.roundUpTransaction.upsert({
-      //   where: { plaidTransactionId: plaidTx.id },
-      //   update: { roundUpAmount: allowedRoundUp },
-      //   create: {
-      //     userId: account.plaidItem.userId,
-      //     plaidTransactionId: plaidTx.id,
-      //     roundUpAmount: allowedRoundUp,
-      //     detectedAmount: detectedAmount,
-      //   },
-      // });
-
-      // Fetch user's default card (assuming stored in DB)
-      const defaultCard = await this.prisma.card.findFirst({
-        where: { userId, isDefault: true },
-      });
-
-      if (!defaultCard?.stripeCardId) {
-        this.logger.warn(`User ${userId} has no default card`);
-        continue; //  just skip this transaction
-      }
-      try {
-        // Charge via Stripe
-        const paymentIntent = await this.stripeService.createPaymentIntent({
-          amount: Math.round(detectedAmount * 100),
-          customerId: user.stripeCustomerId,
-          paymentMethodId: defaultCard.stripeCardId,
+          include: { card: true },
         });
+        if (paymentIntent.status !== 'succeeded') {
+          this.logger.warn(
+            `⚠️ Payment failed for user ${userId}: ${paymentIntent.last_payment_error?.message}`,
+          );
 
-        // PaymentIntent returned — inspect status
-        if (paymentIntent.status === 'succeeded') {
+          return; // stop further round-up processing for this cycle
+        }
+
+        for (const { tx, roundUpAmount } of allRoundUps) {
+          if (remainingLimit <= 0) break; // Stop once we hit limit
+
+          const existingRoundUp =
+            await this.prisma.roundUpTransaction.findFirst({
+              where: {
+                plaidTransaction: {
+                  transactionId: tx.transaction_id,
+                },
+              },
+            });
+
+          // If it's already been charged (INVESTED or SUCCEEDED), skip it
+          if (
+            existingRoundUp &&
+            ['INVESTED', 'SUCCEEDED', 'FAILED'].includes(existingRoundUp.status)
+          ) {
+            this.logger.log(
+              `⏭️ Skipping already processed transaction ${tx.transaction_id}`,
+            );
+            continue;
+          }
+
+          const account = await this.prisma.plaidAccount.findUnique({
+            where: { accountId: tx.account_id },
+            include: { plaidItem: true },
+          });
+          if (!account) continue;
+
+          // Save PlaidTransaction
+          const plaidTx = await this.prisma.plaidTransaction.upsert({
+            where: { transactionId: tx.transaction_id },
+            update: {
+              name: tx.name,
+              amount: tx.amount,
+              date: new Date(tx.date),
+              category: tx.category?.join(', ') || null,
+            },
+            create: {
+              plaidAccountId: account.id,
+              transactionId: tx.transaction_id,
+              name: tx.name,
+              amount: tx.amount,
+              date: new Date(tx.date),
+              category: tx.category?.join(', ') || null,
+            },
+          });
+
+          const amount = Number(tx.amount);
+          const detectedAmount = amount + roundUpAmount;
+
+          // Adjust for remaining limit
+          const allowedRoundUp = Math.min(roundUpAmount, remainingLimit);
+          remainingLimit -= allowedRoundUp;
+
+          // PaymentIntent returned — inspect status
+
           await this.prisma.roundUpTransaction.upsert({
             where: { plaidTransactionId: plaidTx.id },
             update: {
@@ -258,77 +269,29 @@ export class PlaidTransactionsJob {
               status: 'INVESTED',
               stripePaymentIntentId: paymentIntent.id,
               failureReason: null,
-            },
-          });
-
-          await this.prisma.chargedTransaction.create({
-            data: {
-              userId,
-              cardId: defaultCard.id,
-              plaidTransactionId: plaidTx.id,
-              chargedAmount: detectedAmount,
-              status: 'CHARGED',
-              stripePaymentIntentId: paymentIntent.id,
             },
           });
 
           this.logger.log(
             `💸 Charged $${detectedAmount.toFixed(2)} (PI ${paymentIntent.id})`,
           );
-        } else {
-          // Could be requires_payment_method / requires_action / processing etc.
-          const statusToSave =
-            paymentIntent.status === 'requires_action'
-              ? 'RETRY_PENDING'
-              : 'FAILED';
-
-          await this.prisma.roundUpTransaction.upsert({
-            where: { plaidTransactionId: plaidTx.id },
-            update: {
-              roundUpAmount: allowedRoundUp,
-              detectedAmount,
-              status: statusToSave,
-              stripePaymentIntentId: paymentIntent.id,
-              failureReason: `stripe_status:${paymentIntent.status}`,
-            },
-            create: {
-              userId,
-              plaidTransactionId: plaidTx.id,
-              roundUpAmount: allowedRoundUp,
-              detectedAmount,
-              status: statusToSave,
-              stripePaymentIntentId: paymentIntent.id,
-              failureReason: `stripe_status:${paymentIntent.status}`,
-            },
-          });
-
-          this.logger.warn(
-            `⚠️ PaymentIntent ${paymentIntent.id} returned status ${paymentIntent.status} for user ${userId}`,
-          );
         }
-      } catch (error) {
-        await this.prisma.roundUpTransaction.upsert({
-          where: { plaidTransactionId: plaidTx.id },
-          update: {
-            roundUpAmount,
-            detectedAmount,
-            status: 'FAILED',
-            failureReason: error.message,
-          },
-          create: {
-            userId,
-            plaidTransactionId: plaidTx.id,
-            roundUpAmount,
-            detectedAmount,
-            status: 'FAILED',
-            failureReason: error.message,
-          },
-        });
-
-        this.logger.log(
-          `💰 Added roundup $${allowedRoundUp.toFixed(2)} (remaining limit: $${remainingLimit.toFixed(2)})`,
-        );
       }
+    } catch (error) {
+      await this.prisma.chargedTransaction.create({
+        data: {
+          userId,
+          cardId: card.id,
+          chargedAmount: totalRoundUp,
+          status: 'FAILED',
+          stripePaymentIntentId: null,
+          failureReason: error.message || 'Stripe API failure',
+        },
+      });
+      this.logger.error(
+        `❌ Error processing user ${user.id}: ${error.message}`,
+        error.stack,
+      );
     }
   }
   private getStartDateByFrequency(frequency: string): Date {
