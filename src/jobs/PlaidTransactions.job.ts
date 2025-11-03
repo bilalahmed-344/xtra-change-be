@@ -116,6 +116,23 @@ export class PlaidTransactionsJob {
     );
     const endDateObj = new Date();
 
+    const existingChargeForPeriod =
+      await this.prisma.chargedTransaction.findFirst({
+        where: {
+          userId,
+          createdAt: {
+            gte: startDateObj,
+            lte: endDateObj,
+          },
+        },
+      });
+
+    if (existingChargeForPeriod) {
+      this.logger.log(
+        `⏭️ User ${userId} already charged between ${startDateObj.toISOString()} and ${endDateObj.toISOString()}. Skipping duplicate charge.`,
+      );
+      return;
+    }
     // const startDate = startDateObj.toISOString().split('T')[0];
     // const endDate = endDateObj.toISOString().split('T')[0];
 
@@ -168,46 +185,35 @@ export class PlaidTransactionsJob {
       if (paymentIntent.status === 'succeeded') {
         // Create charged transaction record
 
-        const existingCharge = await this.prisma.chargedTransaction.findFirst({
-          where: {
-            stripePaymentIntentId: paymentIntent.id,
-            userId,
-          },
-        });
+        const chargeStatus =
+          paymentIntent.status === 'succeeded'
+            ? 'CHARGED'
+            : paymentIntent.status === 'requires_payment_method'
+              ? 'FAILED'
+              : 'PENDING';
 
-        if (!existingCharge) {
-          await this.prisma.chargedTransaction.create({
-            data: {
-              userId,
-              cardId: card.id,
-              chargedAmount: totalRoundUp,
-              status:
-                paymentIntent.status === 'succeeded'
-                  ? 'CHARGED'
-                  : paymentIntent.status === 'requires_payment_method'
-                    ? 'FAILED'
-                    : 'PENDING',
-              stripePaymentIntentId: paymentIntent.id,
-              failureReason:
-                paymentIntent.status === 'succeeded'
-                  ? null
-                  : paymentIntent.last_payment_error?.message ||
-                    'Unknown failure',
-            },
-            include: { card: true },
-          });
-        } else {
-          this.logger.log(
-            `⏭️ Skipping duplicate chargedTransaction for user ${userId} (PI ${paymentIntent.id})`,
-          );
-        }
+        await this.prisma.chargedTransaction.create({
+          data: {
+            userId,
+            cardId: card.id,
+            chargedAmount: totalRoundUp,
+            status: chargeStatus,
+            stripePaymentIntentId: paymentIntent.id,
+            failureReason:
+              paymentIntent.status === 'succeeded'
+                ? null
+                : paymentIntent.last_payment_error?.message ||
+                  'Unknown failure',
+          },
+          include: { card: true },
+        });
 
         if (paymentIntent.status !== 'succeeded') {
           this.logger.warn(
             `⚠️ Payment failed for user ${userId}: ${paymentIntent.last_payment_error?.message}`,
           );
 
-          return; // stop further round-up processing for this cycle
+          return;
         }
 
         for (const { tx, roundUpAmount } of allRoundUps) {
