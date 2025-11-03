@@ -103,8 +103,15 @@ export class PlaidTransactionsJob {
     );
     const endDateObj = new Date();
 
-    const startDate = startDateObj.toISOString().split('T')[0];
-    const endDate = endDateObj.toISOString().split('T')[0];
+    // const startDate = startDateObj.toISOString().split('T')[0];
+    // const endDate = endDateObj.toISOString().split('T')[0];
+
+    const endDate = new Date().toISOString().split('T')[0];
+
+    // 2 years ago from today
+    const start = new Date();
+    start.setFullYear(start.getFullYear() - 2);
+    const startDate = start.toISOString().split('T')[0];
 
     const request: TransactionsGetRequest = {
       access_token: accessToken,
@@ -114,7 +121,6 @@ export class PlaidTransactionsJob {
 
     const response = await this.plaidClient.transactionsGet(request);
     const transactions = response.data.transactions || [];
-
     // Calculate all roundups for this frequency period
     const allRoundUps: { tx: any; roundUpAmount: number }[] = [];
 
