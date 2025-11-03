@@ -167,26 +167,41 @@ export class PlaidTransactionsJob {
       });
       if (paymentIntent.status === 'succeeded') {
         // Create charged transaction record
-        await this.prisma.chargedTransaction.create({
-          data: {
-            userId,
-            cardId: card.id,
-            chargedAmount: totalRoundUp,
-            status:
-              paymentIntent.status === 'succeeded'
-                ? 'CHARGED'
-                : paymentIntent.status === 'requires_payment_method'
-                  ? 'FAILED'
-                  : 'PENDING',
+
+        const existingCharge = await this.prisma.chargedTransaction.findFirst({
+          where: {
             stripePaymentIntentId: paymentIntent.id,
-            failureReason:
-              paymentIntent.status === 'succeeded'
-                ? null
-                : paymentIntent.last_payment_error?.message ||
-                  'Unknown failure',
+            userId,
           },
-          include: { card: true },
         });
+
+        if (!existingCharge) {
+          await this.prisma.chargedTransaction.create({
+            data: {
+              userId,
+              cardId: card.id,
+              chargedAmount: totalRoundUp,
+              status:
+                paymentIntent.status === 'succeeded'
+                  ? 'CHARGED'
+                  : paymentIntent.status === 'requires_payment_method'
+                    ? 'FAILED'
+                    : 'PENDING',
+              stripePaymentIntentId: paymentIntent.id,
+              failureReason:
+                paymentIntent.status === 'succeeded'
+                  ? null
+                  : paymentIntent.last_payment_error?.message ||
+                    'Unknown failure',
+            },
+            include: { card: true },
+          });
+        } else {
+          this.logger.log(
+            `⏭️ Skipping duplicate chargedTransaction for user ${userId} (PI ${paymentIntent.id})`,
+          );
+        }
+
         if (paymentIntent.status !== 'succeeded') {
           this.logger.warn(
             `⚠️ Payment failed for user ${userId}: ${paymentIntent.last_payment_error?.message}`,
