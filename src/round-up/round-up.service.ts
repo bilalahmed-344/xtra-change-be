@@ -31,8 +31,17 @@ export class RoundUpService {
     try {
       return await this.prisma.roundUpSetting.upsert({
         where: { userId },
-        update: { ...dto, nextRunAt },
-        create: { userId, ...dto, nextRunAt },
+        update: {
+          ...dto,
+          nextRunAt,
+          lastRunAt: now,
+        },
+        create: {
+          userId,
+          ...dto,
+          lastRunAt: now,
+          nextRunAt,
+        },
       });
     } catch (err) {
       console.error('Error in createOrUpdate RoundUp:', err);
