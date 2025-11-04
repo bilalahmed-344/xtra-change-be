@@ -253,4 +253,24 @@ export class PlaidService {
       throw new BadRequestException('Failed to fetch transactions');
     }
   }
+
+  async getTransactionsFromPlaid(
+    accessToken: string,
+    startDate: string,
+    endDate: string,
+  ) {
+    try {
+      const request: TransactionsGetRequest = {
+        access_token: accessToken,
+        start_date: startDate,
+        end_date: endDate,
+      };
+
+      const response = await this.plaidClient.transactionsGet(request);
+      return response.data;
+    } catch (error) {
+      this.logger.error('Error fetching transactions from Plaid:', error);
+      throw new BadRequestException('Failed to fetch transactions from Plaid');
+    }
+  }
 }
