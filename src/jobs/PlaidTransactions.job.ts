@@ -54,7 +54,7 @@ export class PlaidTransactionsJob {
   //   @Cron(CronExpression.EVERY_6_HOURS)
   //   @Cron(CronExpression.EVERY_MINUTE)
 
-  @Cron(CronExpression.EVERY_6_HOURS)
+  @Cron(CronExpression.EVERY_MINUTE)
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
 
@@ -133,12 +133,12 @@ export class PlaidTransactionsJob {
 
     // Check if it's time to run based on frequency
     const now = new Date();
-    if (roundUpSetting.nextRunAt && now < roundUpSetting.nextRunAt) {
-      this.logger.debug(
-        `Not yet time for user ${user.id}. Next run: ${roundUpSetting.nextRunAt}`,
-      );
-      return;
-    }
+    // if (roundUpSetting.nextRunAt && now < roundUpSetting.nextRunAt) {
+    //   this.logger.debug(
+    //     `Not yet time for user ${user.id}. Next run: ${roundUpSetting.nextRunAt}`,
+    //   );
+    //   return;
+    // }
 
     for (const item of user.plaidItems) {
       try {
