@@ -51,7 +51,8 @@ export class PlaidTransactionsJob {
 
   // Run every 6 hours (you can change this)
   //   @Cron(CronExpression.EVERY_6_HOURS)
-  @Cron(CronExpression.EVERY_MINUTE)
+  //   @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_6_HOURS)
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
     const users = await this.prisma.user.findMany({
