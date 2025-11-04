@@ -1,6 +1,5 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PaymentFrequency, RoundUpStatus } from '@prisma/client';
-import { PlaidApi, TransactionsGetRequest } from 'plaid';
 import { PlaidService } from 'src/plaid/plaid.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { decrypt } from 'src/utils/crypto.util';
@@ -8,7 +7,6 @@ import { calculateRoundUp, toCents } from 'src/utils/roundup';
 
 @Injectable()
 export class RoundUpTransactionService {
-  private readonly logger = new Logger(RoundUpTransactionService.name);
   constructor(
     private prisma: PrismaService,
     private plaidService: PlaidService,
