@@ -24,17 +24,8 @@ export class RoundUpTransactionController {
     return this.roundUpTransactionService.getSavingsByFrequency(userId);
   }
   @Get('all')
-  async getAllTransactions(
-    @Req() req,
-    // @Query('page') page = '1',
-    // @Query('limit') limit = '20',
-  ) {
+  async getAllTransactions(@Req() req) {
     const userId = req.user.id;
     return this.roundUpTransactionService.syncPlaidTransactions(userId);
-    // return this.roundUpTransactionService.getAllTransactions(
-    //   userId,
-    //   Number(page),
-    //   Number(limit),
-    // );
   }
 }

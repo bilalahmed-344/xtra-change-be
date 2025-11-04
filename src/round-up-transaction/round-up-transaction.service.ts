@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { PaymentFrequency, RoundUpStatus } from '@prisma/client';
 import { PlaidApi, TransactionsGetRequest } from 'plaid';
 import { PlaidService } from 'src/plaid/plaid.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -17,7 +18,7 @@ export class RoundUpTransactionService {
     const total = await this.prisma.roundUpTransaction.aggregate({
       where: {
         userId,
-        status: 'INVESTED',
+        status: RoundUpStatus.INVESTED,
       },
       _sum: {
         roundUpAmount: true,
@@ -59,7 +60,7 @@ export class RoundUpTransactionService {
           gte: start,
           lte: now,
         },
-        status: 'PENDING',
+        status: RoundUpStatus.PENDING,
       },
     });
 
@@ -67,69 +68,8 @@ export class RoundUpTransactionService {
 
     return {
       frequency: roundUpSetting.paymentFrequency,
-      totalSavings: total,
-      //   transactions,
+      totalSavings: total.toFixed(2),
     };
-  }
-
-  async getAllTransactions(userId: string, page: number, limit: number) {
-    const roundUpSetting = await this.prisma.roundUpSetting.findUnique({
-      where: { userId },
-    });
-
-    return roundUpSetting;
-
-    // const skip = (page - 1) * limit;
-
-    // const where: any = { userId };
-
-    // if (status) {
-    //   where.status = status;
-    // }
-
-    // if (startDate && endDate) {
-    //   where.createdAt = {
-    //     gte: new Date(startDate),
-    //     lte: new Date(endDate),
-    //   };
-    // }
-
-    // const [transactions, totalCount] = await Promise.all([
-    //   this.prisma.roundUpTransaction.findMany({
-    //     where,
-    //     orderBy: { createdAt: 'desc' },
-    //     skip,
-    //     take: limit,
-    //     include: {
-    //       user: {
-    //         select: {
-    //           id: true,
-    //           name: true,
-    //           phoneNumber: true,
-    //         },
-    //       },
-    //       plaidTransaction: {
-    //         select: {
-    //           id: true,
-    //           transactionId: true,
-    //           amount: true,
-    //           name: true,
-    //           date: true,
-    //           category: true,
-    //         },
-    //       },
-    //     },
-    //   }),
-    //   this.prisma.roundUpTransaction.count({ where: { userId } }),
-    // ]);
-
-    // return {
-    //   page,
-    //   limit,
-    //   totalPages: Math.ceil(totalCount / limit),
-    //   totalCount,
-    //   transactions,
-    // };
   }
 
   async syncPlaidTransactions(userId: string) {
@@ -148,48 +88,75 @@ export class RoundUpTransactionService {
       throw new Error('Round-up setting not enabled');
     if (!plaidItems.length) throw new Error('No Plaid accounts found');
 
-    for (const item of plaidItems) {
-      const accessToken = decrypt(item.accessToken);
-      return await this.fetchAndSaveTransactions(userId, accessToken);
-    }
-  }
+    const { paymentFrequency, roundUpLimit } = roundUpSetting;
 
-  private async fetchAndSaveTransactions(userId: string, accessToken: string) {
-    const decryptedToken = accessToken;
+    // Determine start date based on frequency
+    const now = new Date();
+    // let startDate: Date;
+
+    // switch (paymentFrequency) {
+    //   case PaymentFrequency.DAILY:
+    //     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    //     break;
+    //   case PaymentFrequency.WEEKLY:
+    //     const day = now.getDay(); // 0 = Sunday
+    //     startDate = new Date(now);
+    //     startDate.setDate(now.getDate() - day); // Start of week
+    //     break;
+    //   case PaymentFrequency.MONTHLY:
+    //     startDate = new Date(now.getFullYear(), now.getMonth(), 1); // Start of month
+    //     break;
+    //   default:
+    //     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // }
+
+    // const endDate = now;
+
+    const allRoundUps: any[] = [];
+
     const endDate = new Date().toISOString().split('T')[0];
     const start = new Date();
     start.setFullYear(start.getFullYear() - 1); // last 1 year
     const startDate = start.toISOString().split('T')[0];
 
-    // Get transactions from Plaid
-    const response = await this.plaidService.getTransactionsFromPlaid(
-      decryptedToken,
-      startDate,
-      endDate,
-    );
-    const transactions = response?.transactions || [];
-    // Filter transactions and calculate round-ups
-    const allRoundUps: { tx: any; roundUpAmount: number }[] = [];
-    for (const tx of transactions) {
-      if (tx.amount <= 0 || Number.isInteger(tx.amount)) continue;
+    for (const item of plaidItems) {
+      const accessToken = decrypt(item.accessToken);
+      const response = await this.plaidService.getTransactionsFromPlaid(
+        accessToken,
+        startDate,
+        endDate,
+      );
 
-      const roundUpCents = calculateRoundUp(toCents(tx.amount));
-      const roundUpAmount = roundUpCents / 100;
-      if (roundUpAmount > 0) allRoundUps.push({ tx, roundUpAmount });
+      const transactions = response?.transactions || [];
+
+      for (const tx of transactions) {
+        if (tx.amount <= 0 || Number.isInteger(tx.amount)) continue;
+
+        const roundUpAmount = calculateRoundUp(toCents(tx.amount)) / 100;
+
+        if (roundUpAmount > 0) allRoundUps.push({ tx, roundUpAmount });
+      }
     }
 
-    // Save transactions in DB
-    for (const { tx, roundUpAmount } of allRoundUps) {
+    // Limit round-ups according to user setting
+    const limit = roundUpLimit ?? allRoundUps.length;
+    const limitedRoundUps = allRoundUps.slice(0, limit);
+
+    let savedCount = 0;
+
+    for (const { tx, roundUpAmount } of limitedRoundUps) {
+      if (savedCount >= limit) break; // stop if we reached limit
+
       let existingPlaidTx = await this.prisma.plaidTransaction.findUnique({
         where: { transactionId: tx.transaction_id },
       });
+
       if (!existingPlaidTx) {
         const account = await this.prisma.plaidAccount.findUnique({
           where: { accountId: tx.account_id },
         });
         if (!account) continue;
 
-        // Save PlaidTransaction
         existingPlaidTx = await this.prisma.plaidTransaction.create({
           data: {
             plaidAccountId: account.id,
@@ -202,21 +169,41 @@ export class RoundUpTransactionService {
         });
       }
 
-      // Check if roundUpTransaction already exists
       const existingRoundUp = await this.prisma.roundUpTransaction.findUnique({
         where: { plaidTransactionId: existingPlaidTx.id },
       });
-      if (existingRoundUp) continue;
-
-      await this.prisma.roundUpTransaction.create({
-        data: {
-          userId,
-          plaidTransactionId: existingPlaidTx.id,
-          roundUpAmount,
-          detectedAmount: tx.amount + roundUpAmount,
-          status: 'PENDING',
-        },
-      });
+      if (!existingRoundUp) {
+        await this.prisma.roundUpTransaction.create({
+          data: {
+            userId,
+            plaidTransactionId: existingPlaidTx.id,
+            roundUpAmount,
+            detectedAmount: tx.amount + roundUpAmount,
+            status: RoundUpStatus.PENDING,
+          },
+        });
+        savedCount++; // increment after saving
+      }
     }
+
+    const transactions = await this.prisma.roundUpTransaction.findMany({
+      where: { userId, status: RoundUpStatus.PENDING },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, name: true, phoneNumber: true } },
+        plaidTransaction: {
+          select: {
+            id: true,
+            transactionId: true,
+            amount: true,
+            name: true,
+            date: true,
+            category: true,
+          },
+        },
+      },
+    });
+
+    return transactions;
   }
 }
