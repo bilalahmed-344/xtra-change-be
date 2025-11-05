@@ -34,6 +34,10 @@ async function bootstrap() {
     '/.well-known',
     express.static(join(__dirname, '..', 'public', '.well-known')),
   );
+
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.send('✅ Welcome! Your NestJS server is running.');
+  });
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
