@@ -544,7 +544,7 @@ export class PlaidTransactionsJob {
     }
 
     // Find or get account
-    const account = await this.prisma.plaidAccount.findUnique({
+    const account = await tx.prisma.plaidAccount.findUnique({
       where: { accountId: plaidTx.account_id },
       include: { plaidItem: true },
     });

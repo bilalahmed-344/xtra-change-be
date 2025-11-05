@@ -6,13 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StripeService } from 'src/stripe/stripe.service';
-
-export interface WithdrawDto {
-  name: string;
-  routingNumber: string;
-  accountNumber: string;
-  amount: number;
-}
+import { WithdrawDto } from './dtos/withdraw.dto';
 
 @Injectable()
 export class WithdrawService {
@@ -23,9 +17,6 @@ export class WithdrawService {
     private readonly stripeService: StripeService,
   ) {}
 
-  /**
-   * Request a withdrawal
-   */
   async requestWithdrawal(userId: string, dto: WithdrawDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -42,20 +33,20 @@ export class WithdrawService {
     );
 
     try {
-      // Attach bank account
+      // Attach bank account to the connect account (Stripe: external account)
       await this.stripeService.addExternalBankAccount(connectAccountId, {
         name: dto.name,
         routingNumber: dto.routingNumber,
         accountNumber: dto.accountNumber,
       });
 
-      // Create payout
+      // Create payout (amount is provided in main currency unit)
       const payout = await this.stripeService.createPayout(
         connectAccountId,
         dto.amount,
       );
 
-      //  Save withdrawal in DB
+      // Persist withdrawal record
       const withdrawal = await this.prisma.withdrawal.create({
         data: {
           userId,
@@ -87,6 +78,7 @@ export class WithdrawService {
           amount: dto.amount,
           status: 'FAILED',
           failureReason: error.message,
+          requestedAt: new Date(),
         },
       });
 
