@@ -3,6 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import bodyParser, { json } from 'body-parser';
 import { ValidationPipe } from '@nestjs/common';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import * as express from 'express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,6 +30,10 @@ async function bootstrap() {
   );
   app.setGlobalPrefix('api/v1');
   app.enableCors();
+  app.use(
+    '/.well-known',
+    express.static(join(__dirname, '..', 'public', '.well-known')),
+  );
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
