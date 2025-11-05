@@ -7,8 +7,11 @@ import {
   Param,
   Req,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { PlaidService } from './plaid.service';
+import { Public } from 'src/auth/auth.guard';
 
 @Controller('plaid')
 export class PlaidController {
@@ -60,5 +63,18 @@ export class PlaidController {
       parseInt(limit, 10),
     );
     return transactions;
+  }
+  @Public()
+  @Get('oauth-return')
+  handlePlaidOAuthReturn(
+    @Query() query: Record<string, string>,
+    @Res() res: Response,
+  ) {
+    const params = new URLSearchParams(query).toString();
+
+    // Redirect to your Android app via deep link
+    const redirectUrl = `com.xtrachange://oauth-callback?${params}`;
+
+    return res.redirect(redirectUrl);
   }
 }
