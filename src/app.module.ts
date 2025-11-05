@@ -18,7 +18,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { RoundUpTransactionModule } from './round-up-transaction/round-up-transaction.module';
 import { IdenfyModule } from './idenfy/idenfy.module';
 import { RoundUpChargedModule } from './round-up-charged/round-up-charged.module';
-
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -39,6 +40,10 @@ import { RoundUpChargedModule } from './round-up-charged/round-up-charged.module
     RoundUpTransactionModule,
     IdenfyModule,
     RoundUpChargedModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      serveRoot: '/',
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

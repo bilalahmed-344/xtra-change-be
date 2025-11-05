@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.xtrachange",
+      "sha256_cert_fingerprints": [
+        "D9:0B:F4:7F:5A:3C:C8:92:D4:DC:6E:59:B2:40:77:64:6B:66:52:56:72:35:5D:29:CC:E6:CA:67:29:84:EC:E9"
+      ]
+    }
+  }
+]

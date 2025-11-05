@@ -28,6 +28,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/schedule": "^6.0.1",
+    "@nestjs/serve-static": "^5.0.4",
     "@prisma/client": "^6.13.0",
     "@stripe/stripe-js": "^7.9.0",
     "axios": "^1.12.2",
