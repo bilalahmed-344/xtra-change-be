@@ -66,7 +66,7 @@ export class PlaidService {
           'plaid.countryCodes',
         ) as CountryCode[],
         language: 'en',
-        // redirect_uri: 'https://cdn.plaid.com/link/v2/stable/oauth.html',
+        redirect_uri: 'https://com.xtrachange/oauth-return',
         // redirect_uri: this.configService.get<string>('plaid.redirectUri'), // ✅ add this
         // redirect_uri: 'xtrachange://oauth-callback',
       };
