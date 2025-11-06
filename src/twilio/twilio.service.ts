@@ -30,12 +30,20 @@ export class TwilioService {
       `Sending OTP: { to: ${to}, channel: ${channel}, serviceSid: ${this.verifyServiceSid} }`,
     );
 
-    return verification.sid; // return the sid so caller can store it
+    return verification.sid;
   }
 
-  async verifyOtp(verificationSid: string, code: string) {
-    return this.client.verify.v2
-      .services(this.verifyServiceSid)
-      .verificationChecks.create({ verificationSid, code });
+  async verifyOtp(to: string, code: string) {
+    try {
+      const check = await this.client.verify.v2
+        .services(this.verifyServiceSid)
+        .verificationChecks.create({ to, code });
+
+      this.logger.debug(`OTP verification result for ${to}: ${check.status}`);
+      return check;
+    } catch (error) {
+      this.logger.error(`Failed to verify OTP: ${error.message}`);
+      throw error;
+    }
   }
 }

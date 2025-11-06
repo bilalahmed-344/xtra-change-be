@@ -31,20 +31,27 @@ export class WithdrawService {
     const connectAccountId = await this.stripeService.getOrCreateConnectAccount(
       user.id,
     );
-
     try {
       // Attach bank account to the connect account (Stripe: external account)
-      await this.stripeService.addExternalBankAccount(connectAccountId, {
-        name: dto.name,
-        routingNumber: dto.routingNumber,
-        accountNumber: dto.accountNumber,
-      });
+      const bankAccount = await this.stripeService.addExternalBankAccount(
+        connectAccountId,
+        {
+          name: dto.name,
+          routingNumber: dto.routingNumber,
+          accountNumber: dto.accountNumber,
+        },
+      );
+      console.log(
+        '🚀 ~ WithdrawService ~ requestWithdrawal ~ bankAccount:',
+        bankAccount,
+      );
 
       // Create payout (amount is provided in main currency unit)
       const payout = await this.stripeService.createPayout(
         connectAccountId,
         dto.amount,
       );
+      console.log('🚀 ~ WithdrawService ~ requestWithdrawal ~ payout:', payout);
 
       // Persist withdrawal record
       const withdrawal = await this.prisma.withdrawal.create({
