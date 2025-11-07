@@ -199,7 +199,19 @@ export class StripeService {
       accountNumber,
     }: { name: string; routingNumber: string; accountNumber: string },
   ) {
-    return this.stripe.accounts.createExternalAccount(connectAccountId, {
+    // Only add a new bank account if one doesn’t already exist
+    const accounts = await this.stripe.accounts.listExternalAccounts(
+      connectAccountId,
+      {
+        object: 'bank_account',
+      },
+    );
+
+    if (accounts.data.length > 0) {
+      return accounts.data[0]; // return existing test bank account
+    }
+
+    return await this.stripe.accounts.createExternalAccount(connectAccountId, {
       external_account: {
         object: 'bank_account',
         country: 'US',
@@ -240,19 +252,6 @@ export class StripeService {
     }
   }
 
-  // async createPaymentIntent(
-  //   amount: number,
-  //   customerId: string,
-  //   paymentMethodId: string,
-  // ) {
-  //   return await this.stripe.paymentIntents.create({
-  //     amount,
-  //     currency: 'usd',
-  //     customer: customerId,
-  //     payment_method: paymentMethodId,
-  //     confirm: true,
-  //   });
-  // }
   async createPaymentIntent({
     amount,
     customerId,
@@ -295,5 +294,15 @@ export class StripeService {
       // bubble up with message for caller to handle and save
       throw err;
     }
+  }
+
+  async createTestFunding(connectAccountId: string) {
+    return await this.stripe.charges.create({
+      amount: 5000, // $50
+      currency: 'usd',
+      source: 'tok_visa',
+      description: 'Test funding for Express account',
+      destination: { account: connectAccountId },
+    });
   }
 }

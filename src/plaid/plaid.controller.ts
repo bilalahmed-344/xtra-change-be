@@ -9,7 +9,7 @@ import {
   BadRequestException,
   Res,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { PlaidService } from './plaid.service';
 import { Public } from 'src/auth/auth.guard';
 
@@ -64,16 +64,33 @@ export class PlaidController {
     );
     return transactions;
   }
+  // @Public()
+  // @Get('oauth-return')
+  // handlePlaidOAuthReturn(
+  //   @Query() query: Record<string, string>,
+  //   @Res() res: Response,
+  // ) {
+  //   const params = new URLSearchParams(query).toString();
+
+  //   // Redirect to your Android app via deep link
+  //   const redirectUrl = `com.xtrachange://oauth-callback?${params}`;
+
+  //   return res.redirect(redirectUrl);
+  // }
   @Public()
   @Get('oauth-return')
-  handlePlaidOAuthReturn(
-    @Query() query: Record<string, string>,
-    @Res() res: Response,
-  ) {
-    const params = new URLSearchParams(query).toString();
+  handlePlaidOAuthReturn(@Req() req: Request, @Res() res: Response) {
+    const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+    console.log('Full incoming URL:', fullUrl);
 
-    // Redirect to your Android app via deep link
-    const redirectUrl = `com.xtrachange://oauth-callback?${params}`;
+    // Extract query string (after ?)
+    const queryString = fullUrl.split('?')[1];
+    if (!queryString) {
+      return res.status(400).send('No query params');
+    }
+
+    const redirectUrl = `com.xtrachange://oauth-callback?${queryString}`;
+    console.log('Redirecting to:', redirectUrl);
 
     return res.redirect(redirectUrl);
   }
