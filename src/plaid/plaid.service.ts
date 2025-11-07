@@ -68,7 +68,6 @@ export class PlaidService {
         language: 'en',
         redirect_uri:
           'https://xtra-change-be.onrender.com/api/v1/plaid/oauth-return',
-        // redirect_uri: this.configService.get<string>('plaid.redirectUri'), // ✅ add this
       };
 
       const response = await this.plaidClient.linkTokenCreate(request);

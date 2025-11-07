@@ -31,6 +31,10 @@ export class WithdrawService {
     const connectAccountId = await this.stripeService.getOrCreateConnectAccount(
       user.id,
     );
+    console.log(
+      '🚀 ~ WithdrawService ~ requestWithdrawal ~ connectAccountId:',
+      connectAccountId,
+    );
     try {
       // Attach bank account to the connect account (Stripe: external account)
       const bankAccount = await this.stripeService.addExternalBankAccount(
@@ -41,38 +45,40 @@ export class WithdrawService {
           accountNumber: dto.accountNumber,
         },
       );
-      console.log(
-        '🚀 ~ WithdrawService ~ requestWithdrawal ~ bankAccount:',
-        bankAccount,
-      );
 
-      // Create payout (amount is provided in main currency unit)
+      // Step 2: (Test Mode Only) Add fake funds to Express account
+      if (process.env.NODE_ENV !== 'production') {
+        await this.stripeService.createTestFunding(connectAccountId);
+      }
+
+      // // Create payout (amount is provided in main currency unit)
       const payout = await this.stripeService.createPayout(
         connectAccountId,
         dto.amount,
       );
-      console.log('🚀 ~ WithdrawService ~ requestWithdrawal ~ payout:', payout);
+      return { payout, bankAccount };
+      // console.log('🚀 ~ WithdrawService ~ requestWithdrawal ~ payout:', payout);
 
-      // Persist withdrawal record
-      const withdrawal = await this.prisma.withdrawal.create({
-        data: {
-          userId,
-          amount: dto.amount,
-          status: 'PROCESSING',
-          failureReason: null,
-          stripePayoutId: payout.id,
-          stripeAccountId: connectAccountId,
-          requestedAt: new Date(),
-          processedAt: new Date(),
-        },
-      });
+      // // Persist withdrawal record
+      // const withdrawal = await this.prisma.withdrawal.create({
+      //   data: {
+      //     userId,
+      //     amount: dto.amount,
+      //     status: 'PROCESSING',
+      //     failureReason: null,
+      //     stripePayoutId: payout.id,
+      //     stripeAccountId: connectAccountId,
+      //     requestedAt: new Date(),
+      //     processedAt: new Date(),
+      //   },
+      // });
 
-      return {
-        success: true,
-        message: 'Withdrawal request submitted successfully',
-        withdrawal,
-        payout,
-      };
+      // return {
+      //   success: true,
+      //   message: 'Withdrawal request submitted successfully',
+      //   withdrawal,
+      //   payout,
+      // };
     } catch (error) {
       this.logger.error(
         `❌ Withdrawal failed for user ${userId}: ${error.message}`,
