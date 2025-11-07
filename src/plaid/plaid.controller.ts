@@ -80,17 +80,22 @@ export class PlaidController {
   @Public()
   @Get('oauth-return')
   handlePlaidOAuthReturn(@Req() req: Request, @Res() res: Response) {
-    const fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    console.log('Full incoming URL:', fullUrl);
+    // Log FULL originalUrl for debugging
+    console.log('Full originalUrl:', req.originalUrl);
 
-    // Extract query string (after ?)
-    const queryString = fullUrl.split('?')[1];
-    if (!queryString) {
+    // Parse ALL query params explicitly
+    const url = new URL(
+      req.protocol + '://' + req.get('host') + req.originalUrl,
+    );
+    const queryParams = url.searchParams.toString();
+    console.log('All query params:', queryParams); // Should show link_session_id, request_id, etc.
+
+    if (!queryParams) {
       return res.status(400).send('No query params');
     }
 
-    const redirectUrl = `com.xtrachange://oauth-callback?${queryString}`;
-    console.log('Redirecting to:', redirectUrl);
+    const redirectUrl = `com.xtrachange://oauth-callback?${queryParams}`;
+    console.log('Backend redirecting to:', redirectUrl);
 
     return res.redirect(redirectUrl);
   }
