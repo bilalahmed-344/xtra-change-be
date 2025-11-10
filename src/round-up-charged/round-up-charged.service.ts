@@ -35,7 +35,7 @@ export class RoundUpChargedService {
         include: {
           card: true,
           user: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, firstName: true, lastName: true, email: true },
           },
         },
         orderBy: { createdAt: 'desc' },

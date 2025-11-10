@@ -188,7 +188,14 @@ export class RoundUpTransactionService {
       where: { userId, status: RoundUpStatus.PENDING },
       orderBy: { createdAt: 'desc' },
       include: {
-        user: { select: { id: true, name: true, phoneNumber: true } },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true,
+          },
+        },
         plaidTransaction: {
           select: {
             id: true,
