@@ -9,11 +9,21 @@ export class WithdrawController {
   @Post('/request')
   async requestWithdrawal(@Req() req, @Body() dto: WithdrawDto) {
     const userId = req.user.id;
-    return this.withdrawService.requestWithdrawal(userId, dto);
+    const ipAddress = this.getIpAddress(req);
+    return this.withdrawService.requestWithdrawal(userId, dto, ipAddress);
   }
 
   @Post(':id/check-status')
   async checkStatus(@Param('id') id: string) {
     return this.withdrawService.checkWithdrawalStatus(id);
+  }
+
+  private getIpAddress(req: any): string {
+    return (
+      req.ip ||
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.connection.remoteAddress ||
+      '0.0.0.0'
+    );
   }
 }

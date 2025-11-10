@@ -41,7 +41,7 @@ export class StripeService {
 
     const customer = await this.stripe.customers.create({
       email: user.email ?? undefined,
-      name: user.name ?? undefined,
+      name: `${user.firstName} ${user.lastName}`,
       metadata: { userId },
     });
 
@@ -166,27 +166,102 @@ export class StripeService {
     });
   }
 
-  async getOrCreateConnectAccount(userId: string) {
+  async getOrCreateConnectAccount(userId: string, ipAddress: string, dto: any) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
     if (user.stripeConnectId) {
-      return user.stripeConnectId;
+      // Check if account is restricted and needs update
+      const existingAccount = await this.stripe.accounts.retrieve(
+        user.stripeConnectId,
+      );
+      return existingAccount.id;
     }
 
-    const account = await this.stripe.accounts.create({
-      type: 'express',
+    // Prepare account creation params
+    const accountParams: Stripe.AccountCreateParams = {
+      type: 'custom',
       country: 'US',
-      email: user.email ?? undefined,
+      email: user.email ?? 'no-email@example.com',
+
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+
+      business_type: 'individual',
+
+      individual: {
+        first_name: user.firstName ?? 'Test',
+        last_name: user.lastName ?? 'User',
+        email: user.email ?? 'no-email@example.com',
+        phone: user.phoneNumber ?? '+10000000000',
+
+        dob: {
+          day: 2,
+          month: 3,
+          year: 1999,
+        },
+
+        address: {
+          line1: user.address ?? '123 Main Street',
+          city: user.city ?? 'New York',
+          state: user.state ?? 'NY',
+          postal_code: user.postal_code ?? '10001',
+          country: user?.country ?? 'US',
+        },
+        // id_number: '000000000',
+      },
+
+      tos_acceptance: {
+        date: Math.floor(Date.now() / 1000),
+        ip: ipAddress,
+      },
+
+      business_profile: {
+        product_description: 'User withdrawals and payments',
+        mcc: '5734',
+        url: 'https://yourapp.com',
+      },
+
+      external_account: {
+        object: 'bank_account',
+        account_holder_name:
+          dto?.account_holder_name ?? `${user.firstName ?? 'Test User'}`,
+        account_holder_type: dto?.account_holder_type ?? 'individual',
+        routing_number: dto?.routing_number ?? '110000000',
+        account_number: dto?.account_number ?? '000123456789',
+        country: 'US',
+        currency: 'usd',
+      },
+
       metadata: { userId },
-    });
+    };
+
+    const account = await this.stripe.accounts.create(accountParams);
 
     await this.prisma.user.update({
       where: { id: userId },
       data: { stripeConnectId: account.id },
     });
+
+    // Check if there are still requirements
+    const accountDetails = await this.stripe.accounts.retrieve(account.id);
+    console.log('Account Status:', {
+      charges_enabled: accountDetails.charges_enabled,
+      payouts_enabled: accountDetails.payouts_enabled,
+      requirements: accountDetails.requirements,
+    });
+
+    // if (accountDetails.requirements?.currently_due?.length > 0) {
+    //   throw new BadRequestException({
+    //     message: 'Additional information required',
+    //     requirements: accountDetails.requirements.currently_due,
+    //     errors: accountDetails.requirements.errors,
+    //   });
+    // }
 
     return account.id;
   }

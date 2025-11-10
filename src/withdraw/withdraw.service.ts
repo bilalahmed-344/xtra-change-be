@@ -17,7 +17,7 @@ export class WithdrawService {
     private readonly stripeService: StripeService,
   ) {}
 
-  async requestWithdrawal(userId: string, dto: WithdrawDto) {
+  async requestWithdrawal(userId: string, dto: WithdrawDto, ipAddress: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -27,24 +27,33 @@ export class WithdrawService {
       throw new BadRequestException('Withdrawal amount must be positive');
     }
 
+    // Check user balance (implement your balance logic) TODO
+
     // Ensure user has a Stripe Connect account
-    const connectAccountId = await this.stripeService.getOrCreateConnectAccount(
-      user.id,
-    );
-    console.log(
-      '🚀 ~ WithdrawService ~ requestWithdrawal ~ connectAccountId:',
-      connectAccountId,
-    );
+
     try {
-      // Attach bank account to the connect account (Stripe: external account)
-      const bankAccount = await this.stripeService.addExternalBankAccount(
-        connectAccountId,
-        {
-          name: dto.name,
-          routingNumber: dto.routingNumber,
-          accountNumber: dto.accountNumber,
-        },
-      );
+      // const bankDetails = {
+      //   account_holder_name: dto.name,
+      //   account_holder_type: 'individual',
+      //   routing_number: dto.routingNumber,
+      //   account_number: dto.accountNumber,
+      // };
+      const connectAccountId =
+        await this.stripeService.getOrCreateConnectAccount(
+          user.id,
+          ipAddress,
+          dto,
+        );
+
+      // Attach bank account to the connect account (Stripe: external account) 527 account type
+      // const bankAccount = await this.stripeService.addExternalBankAccount(
+      //   connectAccountId,
+      //   {
+      //     name: dto.name,
+      //     routingNumber: dto.routingNumber,
+      //     accountNumber: dto.accountNumber,
+      //   },
+      // );
 
       // Step 2: (Test Mode Only) Add fake funds to Express account
       if (process.env.NODE_ENV !== 'production') {
@@ -52,11 +61,11 @@ export class WithdrawService {
       }
 
       // // Create payout (amount is provided in main currency unit)
-      const payout = await this.stripeService.createPayout(
-        connectAccountId,
-        dto.amount,
-      );
-      return { payout, bankAccount };
+      // const payout = await this.stripeService.createPayout(
+      //   connectAccountId,
+      //   dto.amount,
+      // );
+
       // console.log('🚀 ~ WithdrawService ~ requestWithdrawal ~ payout:', payout);
 
       // // Persist withdrawal record
