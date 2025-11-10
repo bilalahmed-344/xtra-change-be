@@ -32,8 +32,7 @@ export class AuthService {
       // User does not exist → signup flow
       user = await this.prisma.user.create({
         data: {
-          name: (dto as SignupDto).name ?? null,
-          email: (dto as SignupDto).email ?? null,
+          email: (dto as SignupDto).email ?? '',
           phoneNumber: dto.phoneNumber,
           phoneVerified: false,
         },
@@ -48,7 +47,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         otpCode: otp,
-        otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        otpExpiresAt: new Date(Date.now() + 20 * 60 * 1000),
       },
     });
 
@@ -72,7 +71,6 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        name: dto.name,
         email: dto.email,
         phoneNumber: dto.phoneNumber,
         phoneVerified: false,
@@ -253,7 +251,8 @@ export class AuthService {
       plaidAccessToken,
       user: {
         id: user.id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         phoneNumber: user.phoneNumber,
         roundUpEnabled,
