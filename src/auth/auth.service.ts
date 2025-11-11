@@ -32,7 +32,7 @@ export class AuthService {
       // User does not exist → signup flow
       user = await this.prisma.user.create({
         data: {
-          email: (dto as SignupDto).email ?? '',
+          // email: (dto as SignupDto).email ?? '',
           phoneNumber: dto.phoneNumber,
           phoneVerified: false,
         },
@@ -71,7 +71,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        // email: dto.email,
         phoneNumber: dto.phoneNumber,
         phoneVerified: false,
       },
@@ -95,31 +95,6 @@ export class AuthService {
       otp,
     };
   }
-
-  // async login(dto: LoginDto) {
-  //   const user = await this.prisma.user.findUnique({
-  //     where: { phoneNumber: dto.phoneNumber },
-  //   });
-
-  //   if (!user) {
-  //     throw new UnauthorizedException('Invalid credentials');
-  //   }
-
-  //   const payload = {
-  //     id: user.id,
-  //   };
-
-  //   const token = this.jwtService.sign(payload);
-  //   // await this.twilioService.sendOtp(dto.phoneNumber);
-  //   const { stripeCustomerId, ...userWithoutStripeId } = user;
-
-  //   return {
-  //     // message: 'OTP sent to phone number',
-  //     // phoneNumber: dto.phoneNumber,
-  //     token,
-  //     user: userWithoutStripeId,
-  //   };
-  // }
 
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
