@@ -32,7 +32,7 @@ export class RoundUpTransactionService {
     const roundUpSetting = await this.prisma.roundUpSetting.findUnique({
       where: { userId },
     });
-    if (!roundUpSetting || !roundUpSetting.enabled) {
+    if (!roundUpSetting) {
       throw new BadRequestException('RoundUpSetting not found for user');
     }
 
@@ -82,8 +82,7 @@ export class RoundUpTransactionService {
     if (!user) throw new Error('User not found');
     const { plaidItems, roundUpSetting } = user;
 
-    if (!roundUpSetting || !roundUpSetting.enabled)
-      throw new Error('Round-up setting not enabled');
+    if (!roundUpSetting) throw new Error('Round-up setting not enabled');
     if (!plaidItems.length) throw new Error('No Plaid accounts found');
 
     const { paymentFrequency, roundUpLimit } = roundUpSetting;

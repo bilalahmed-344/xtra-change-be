@@ -52,10 +52,9 @@ model Card {
   stripeCardId String     @unique
   brand        String?
   last4        String?
-  expMonth     Int?
-  expYear      Int?    // set the type
-  isDefault    Boolean    @default(false) 
-  status       CardStatus @default(ACTIVE)  // remove 
+  expMonth     String?   
+  expYear      String?   
+  isDefault    Boolean  @default(false) 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -68,7 +67,6 @@ model Card {
 model RoundUpSetting {
   id          String   @id @default(uuid())
   userId      String   @unique
-  enabled     Boolean  @default(true) // reveved
 
   paymentFrequency PaymentFrequency @default(DAILY)
   roundUpLimit     Float? 
@@ -76,7 +74,6 @@ model RoundUpSetting {
   lastRunAt        DateTime?
   nextRunAt        DateTime?  // revmmmm
 
-  destination RoundUpDestination @default(SAVINGS) // rem 
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -198,15 +195,7 @@ enum PaymentFrequency {
   WEEKLY
   MONTHLY
 }
-enum RoundUpDestination {
-  SAVINGS
-  INVESTMENT
-  CHARITY
-}
-enum CardStatus {
-  ACTIVE
-  INACTIVE
-}
+
 
 enum ChargedStatus {
   PENDING

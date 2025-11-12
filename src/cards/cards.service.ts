@@ -59,13 +59,13 @@ export class CardsService {
     // Reset all other cards
     await this.prisma.card.updateMany({
       where: { userId },
-      data: { isDefault: false, status: 'INACTIVE' },
+      data: { isDefault: false },
     });
 
-    // Mark selected card as ACTIVE + default
+    // Mark selected card a default
     return this.prisma.card.update({
       where: { id: cardId },
-      data: { isDefault: true, status: 'ACTIVE' },
+      data: { isDefault: true },
     });
   }
 
