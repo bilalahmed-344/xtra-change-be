@@ -85,40 +85,6 @@ export class PlaidTransactionsJob {
     }
   }
 
-  // @Cron(CronExpression.EVERY_6_HOURS)
-  // async syncAllUserTransactions() {
-  //   this.logger.log('🔄 Starting Plaid transactions sync job...');
-  //   const users = await this.prisma.user.findMany({
-  //     include: {
-  //       plaidItems: true,
-  //       roundUpSetting: true,
-  //       cards: { where: { isDefault: true } },
-  //     },
-  //   });
-
-  //   for (const user of users) {
-  //     const defaultCard = user.cards[0];
-  //     if (!defaultCard) {
-  //       this.logger.warn(`⚠️ User ${user.id} has no default card, skipping.`);
-  //       continue;
-  //     }
-
-  //     for (const item of user.plaidItems) {
-  //       try {
-  //         const accessToken = decrypt(item.accessToken);
-  //         await this.syncTransactionsForItem(user, accessToken, defaultCard);
-  //       } catch (err) {
-  //         this.logger.error(
-  //           `❌ Failed to sync transactions for ${user.id}`,
-  //           err,
-  //         );
-  //       }
-  //     }
-  //   }
-
-  //   this.logger.log('✅ Finished Plaid transactions sync job.');
-  // }
-
   private async processUserTransactions(user: any) {
     const defaultCard = user.cards[0];
     if (!defaultCard) {
@@ -132,7 +98,9 @@ export class PlaidTransactionsJob {
     }
 
     // Check if it's time to run based on frequency
+
     const now = new Date();
+
     // if (roundUpSetting.nextRunAt && now < roundUpSetting.nextRunAt) {
     //   this.logger.debug(
     //     `Not yet time for user ${user.id}. Next run: ${roundUpSetting.nextRunAt}`,
@@ -224,6 +192,8 @@ export class PlaidTransactionsJob {
     const allRoundUps: { tx: any; roundUpAmount: number }[] = [];
 
     for (const tx of transactions) {
+      this.logger.log(`tx `, tx);
+
       // Skip negative amounts (credits) and whole dollar amounts
       if (tx.amount <= 0 || Number.isInteger(tx.amount)) continue;
 
@@ -244,6 +214,7 @@ export class PlaidTransactionsJob {
     let totalRoundUp = allRoundUps.reduce((sum, r) => sum + r.roundUpAmount, 0);
 
     let remainingLimit = roundUpLimit;
+
     // Apply limit
     totalRoundUp = Math.min(totalRoundUp, roundUpLimit);
 
@@ -254,15 +225,16 @@ export class PlaidTransactionsJob {
     );
 
     // Process payment and save records in a transaction
-    await this.processPaymentAndSaveRecords(
-      user,
-      card,
-      allRoundUps,
-      totalRoundUp,
-      roundUpLimit,
-      roundUpSetting,
-      now,
-    );
+
+    // await this.processPaymentAndSaveRecords(
+    //   user,
+    //   card,
+    //   allRoundUps,
+    //   totalRoundUp,
+    //   roundUpLimit,
+    //   roundUpSetting,
+    //   now,
+    // );
 
     // try {
     //   const paymentIntent = await this.stripeService.createPaymentIntent({
