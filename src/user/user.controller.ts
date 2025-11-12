@@ -10,10 +10,14 @@ import {
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dtos/updateUser.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { S3Service } from 'src/s3/s3.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly s3Service: S3Service,
+  ) {}
   @Get()
   async getUser(@Req() req) {
     const userId = req.user.id;
@@ -28,10 +32,11 @@ export class UserController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     const userId = req.user.id;
-
-    if (file && file.path) {
-      updateUserDto.profilePic = file.path;
+    if (file) {
+      const uploaded = await this.s3Service.uploadFile(file);
+      updateUserDto.profilePic = uploaded.url;
     }
+
     return this.userService.updateUser(userId, updateUserDto);
   }
 }

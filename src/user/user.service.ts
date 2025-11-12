@@ -61,7 +61,13 @@ export class UserService {
       },
     });
 
-    const { stripeCustomerId, ...otherUpdatedUser } = updatedUser;
+    const {
+      stripeCustomerId,
+      pin,
+      otpCode,
+      otpExpiresAt,
+      ...otherUpdatedUser
+    } = updatedUser;
     return {
       message: 'User updated successfully',
       user: otherUpdatedUser,

@@ -3,16 +3,10 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
-import { MulterModule } from '@nestjs/platform-express';
-import { CloudinaryConfigService } from 'src/cloudinary/cloudinary.provider';
+import { S3Module } from 'src/s3/s3.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    MulterModule.registerAsync({
-      useClass: CloudinaryConfigService,
-    }),
-  ],
+  imports: [PrismaModule, S3Module],
   controllers: [UserController],
   providers: [UserService, PrismaService],
   exports: [UserService],
