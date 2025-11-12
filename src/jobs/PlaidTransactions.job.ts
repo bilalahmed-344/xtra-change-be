@@ -62,7 +62,8 @@ export class PlaidTransactionsJob {
       const users = await this.prisma.user.findMany({
         where: {
           roundUpSetting: {
-            enabled: true,
+            // only users that have a roundUpSetting record
+            isNot: null,
           }, // todo
         },
         include: {

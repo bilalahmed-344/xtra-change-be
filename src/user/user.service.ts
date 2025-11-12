@@ -17,6 +17,9 @@ export class UserService {
         roundUpSetting: true,
       },
     });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
     const plaidItem = await this.prisma.plaidItem.findFirst({
       where: { userId: id },
@@ -29,7 +32,7 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const roundUpEnabled = user.roundUpSetting?.enabled ?? false;
+    const roundUpEnabled = !!user.roundUpSetting;
 
     const { otpCode, otpExpiresAt, pin, ...otherUser } = user;
 

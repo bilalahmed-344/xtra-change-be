@@ -53,50 +53,6 @@ export class StripeService {
     return customer.id;
   }
 
-  // async addCard(userId: string, paymentMethodId: string) {
-  //   const customerId = await this.getOrCreateCustomer(userId);
-
-  //   // Get card details
-  //   const paymentMethod =
-  //     await this.stripe.paymentMethods.retrieve(paymentMethodId);
-
-  //   if (paymentMethod.customer && paymentMethod.customer !== customerId) {
-  //     throw new BadRequestException(
-  //       'This payment method belongs to another customer',
-  //     );
-  //   }
-  //   // Attach payment method to customer
-
-  //   // 2. Attach only if not already attached
-  //   if (!paymentMethod.customer) {
-  //     await this.stripe.paymentMethods.attach(paymentMethodId, {
-  //       customer: customerId,
-  //     });
-  //   }
-
-  //   // Before creating the new card, reset all others to isDefault = false
-
-  //   await this.prisma.card.updateMany({
-  //     where: { userId },
-  //     data: { isDefault: false },
-  //   });
-
-  //   // Save to database
-  //   const savedCard = await this.prisma.card.create({
-  //     data: {
-  //       userId,
-  //       stripeCardId: paymentMethodId,
-  //       brand: paymentMethod?.card?.brand,
-  //       last4: paymentMethod?.card?.last4,
-  //       expMonth: paymentMethod?.card?.exp_month,
-  //       expYear: paymentMethod?.card?.exp_year,
-  //       status: 'ACTIVE', // always active
-  //       isDefault: true, // always default
-  //     },
-  //   });
-
-  //   return savedCard;
-  // }
   async addCard(userId: string, paymentMethodId: string) {
     const customerId = await this.getOrCreateCustomer(userId);
 
@@ -131,9 +87,12 @@ export class StripeService {
         stripeCardId: paymentMethod.id,
         brand: paymentMethod.card?.brand,
         last4: paymentMethod.card?.last4,
-        expMonth: paymentMethod.card?.exp_month,
-        expYear: paymentMethod.card?.exp_year,
-        status: 'ACTIVE',
+        expMonth: paymentMethod.card?.exp_month
+          ? paymentMethod.card.exp_month.toString().padStart(2, '0')
+          : null,
+        expYear: paymentMethod.card?.exp_year
+          ? paymentMethod.card.exp_year.toString()
+          : null,
         isDefault: true,
       },
     });

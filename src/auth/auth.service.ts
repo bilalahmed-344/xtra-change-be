@@ -218,7 +218,7 @@ export class AuthService {
     if (plaidItem) {
       plaidAccessToken = plaidItem.accessToken;
     }
-    const roundUpEnabled = user.roundUpSetting?.enabled ?? false;
+    const roundUpEnabled = !!user.roundUpSetting;
 
     return {
       message: 'PIN set successfully.',
@@ -264,7 +264,7 @@ export class AuthService {
     const token = this.jwtService.sign(payload);
     const { pin, stripeConnectId, otpExpiresAt, otpCode, ...other } = user;
 
-    const roundUpEnabled = user.roundUpSetting?.enabled ?? false;
+    const roundUpEnabled = !!user.roundUpSetting;
 
     return {
       message: 'Login successful',
