@@ -53,9 +53,9 @@ model Card {
   brand        String?
   last4        String?
   expMonth     Int?
-  expYear      Int?
+  expYear      Int?    // set the type
   isDefault    Boolean    @default(false) 
-  status       CardStatus @default(ACTIVE)  
+  status       CardStatus @default(ACTIVE)  // remove 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -68,15 +68,15 @@ model Card {
 model RoundUpSetting {
   id          String   @id @default(uuid())
   userId      String   @unique
-  enabled     Boolean  @default(true)
+  enabled     Boolean  @default(true) // reveved
 
   paymentFrequency PaymentFrequency @default(DAILY)
   roundUpLimit     Float? 
 
   lastRunAt        DateTime?
-  nextRunAt        DateTime?
+  nextRunAt        DateTime?  // revmmmm
 
-  destination RoundUpDestination @default(SAVINGS)
+  destination RoundUpDestination @default(SAVINGS) // rem 
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

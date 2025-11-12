@@ -5,8 +5,6 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { MulterModule } from '@nestjs/platform-express';
-import { CloudinaryConfigService } from './cloudinary/cloudinary.provider';
 import { CardsModule } from './cards/cards.module';
 import { StripeModule } from './stripe/stripe.module';
 import { RoundUpModule } from './round-up/round-up.module';
@@ -20,13 +18,11 @@ import { IdenfyModule } from './idenfy/idenfy.module';
 import { RoundUpChargedModule } from './round-up-charged/round-up-charged.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { S3Module } from './s3/s3.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
-    MulterModule.registerAsync({
-      useClass: CloudinaryConfigService,
-    }),
     PrismaModule,
     AuthModule,
     UserModule,
@@ -40,6 +36,7 @@ import { join } from 'path';
     RoundUpTransactionModule,
     IdenfyModule,
     RoundUpChargedModule,
+    S3Module,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       serveRoot: '/',
