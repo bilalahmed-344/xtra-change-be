@@ -54,7 +54,7 @@ export class PlaidTransactionsJob {
   //   @Cron(CronExpression.EVERY_6_HOURS)
   //   @Cron(CronExpression.EVERY_MINUTE)
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_6_HOURS)
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
 
