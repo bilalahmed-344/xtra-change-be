@@ -41,12 +41,12 @@ export class PlaidService {
   private getPlaidEnvironment(): string {
     const env = this.configService.get<string>('plaid.env');
     switch (env) {
-      case 'sandbox':
-        return PlaidEnvironments.sandbox;
-      case 'development':
-        return PlaidEnvironments.development;
-      case 'production':
-        return PlaidEnvironments.production;
+      // case 'sandbox':
+      //   return PlaidEnvironments.sandbox;
+      // case 'development':
+      //   return PlaidEnvironments.development;
+      // case 'production':
+      //   return PlaidEnvironments.production;
       default:
         return PlaidEnvironments.sandbox;
     }

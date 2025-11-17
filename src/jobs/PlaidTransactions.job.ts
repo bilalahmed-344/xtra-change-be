@@ -38,12 +38,12 @@ export class PlaidTransactionsJob {
   private getPlaidEnvironment() {
     const env = this.configService.get<string>('plaid.env');
     switch (env) {
-      case 'sandbox':
-        return PlaidEnvironments.sandbox;
-      case 'development':
-        return PlaidEnvironments.development;
-      case 'production':
-        return PlaidEnvironments.production;
+      // case 'sandbox':
+      //   return PlaidEnvironments.sandbox;
+      // case 'development':
+      //   return PlaidEnvironments.development;
+      // case 'production':
+      //   return PlaidEnvironments.production;
       default:
         return PlaidEnvironments.sandbox;
     }
@@ -75,9 +75,9 @@ export class PlaidTransactionsJob {
 
       this.logger.log(`Found ${users.length} with enabled round-ups`);
 
-      // for (const user of users) {
-      //   await this.processUserTransactions(user);
-      // }
+      for (const user of users) {
+        await this.processUserTransactions(user);
+      }
 
       this.logger.log('✅ Finished Plaid transactions sync job.');
     } catch (error) {
@@ -106,7 +106,11 @@ export class PlaidTransactionsJob {
 
     for (const item of user.plaidItems) {
       try {
-        const accessToken = decrypt(item.accessToken);
+        const accessToken = item.accessToken;
+
+        this.logger.error(`accessToken`, accessToken);
+
+        // const accessToken = decrypt(item.accessToken);
         if (!accessToken) {
           this.logger.error(
             `❌ Failed to decrypt accessToken for user ${user.id}, item ${item.id}. Skipping this item.`,
@@ -175,6 +179,7 @@ export class PlaidTransactionsJob {
     let response;
     try {
       response = await this.plaidClient.transactionsGet(request);
+      this.logger.log(`response`, response);
     } catch (error) {
       this.logger.error(
         `Failed to fetch Plaid transactions for user ${userId}`,
