@@ -21,12 +21,28 @@ export function encrypt(data: string): string {
   return iv.toString('hex') + ':' + encrypted;
 }
 
-export function decrypt(data: string): string {
-  const parts = data.split(':');
-  const iv_from_data = Buffer.from(parts.shift()!, 'hex');
-  const encryptedText = parts.join(':');
-  const decipher = crypto.createDecipheriv(algorithm, key, iv_from_data);
-  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+// export function decrypt(data: string): string {
+//   const parts = data.split(':');
+//   const iv_from_data = Buffer.from(parts.shift()!, 'hex');
+//   const encryptedText = parts.join(':');
+//   const decipher = crypto.createDecipheriv(algorithm, key, iv_from_data);
+//   let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+//   decrypted += decipher.final('utf8');
+//   return decrypted;
+// }
+
+export function decrypt(data: string): string | null {
+  try {
+    const parts = data.split(':');
+    if (parts.length !== 2) return null;
+    const iv = Buffer.from(parts[0], 'hex');
+    const encryptedText = parts[1];
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err) {
+    console.error('Failed to decrypt:', err.message);
+    return null;
+  }
 }

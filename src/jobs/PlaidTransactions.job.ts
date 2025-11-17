@@ -54,7 +54,7 @@ export class PlaidTransactionsJob {
   //   @Cron(CronExpression.EVERY_6_HOURS)
   //   @Cron(CronExpression.EVERY_MINUTE)
 
-  @Cron(CronExpression.EVERY_6_HOURS)
+  @Cron(CronExpression.EVERY_MINUTE)
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
 
@@ -69,11 +69,11 @@ export class PlaidTransactionsJob {
         include: {
           plaidItems: true,
           roundUpSetting: true,
-          cards: { where: { isDefault: true } }, //  todo
+          // cards: { where: { isDefault: true } }, //  todo
         },
       });
 
-      this.logger.log(`Found ${users.length} users with enabled round-ups`);
+      this.logger.log(`Found ${users.length} with enabled round-ups`);
 
       // for (const user of users) {
       //   await this.processUserTransactions(user);
@@ -87,20 +87,15 @@ export class PlaidTransactionsJob {
   }
 
   private async processUserTransactions(user: any) {
-    const defaultCard = user.cards[0];
-    if (!defaultCard) {
-      this.logger.warn(`⚠️ User ${user.id} has no default card, skipping.`);
-      return;
-    }
-
     const roundUpSetting = user.roundUpSetting;
-    if (!roundUpSetting || !roundUpSetting.enabled) {
+
+    if (!roundUpSetting || !roundUpSetting.roundUpLimit) {
       return;
     }
 
     // Check if it's time to run based on frequency
 
-    const now = new Date();
+    // const now = new Date();
 
     // if (roundUpSetting.nextRunAt && now < roundUpSetting.nextRunAt) {
     //   this.logger.debug(
@@ -112,12 +107,13 @@ export class PlaidTransactionsJob {
     for (const item of user.plaidItems) {
       try {
         const accessToken = decrypt(item.accessToken);
-        await this.syncTransactionsForItem(
-          user,
-          accessToken,
-          defaultCard,
-          roundUpSetting,
-        );
+        if (!accessToken) {
+          this.logger.error(
+            `❌ Failed to decrypt accessToken for user ${user.id}, item ${item.id}. Skipping this item.`,
+          );
+          continue;
+        }
+        await this.syncTransactionsForItem(user, accessToken, roundUpSetting);
       } catch (err) {
         this.logger.error(
           `❌ Failed to sync transactions for user ${user.id}, item ${item.id}`,
@@ -130,7 +126,6 @@ export class PlaidTransactionsJob {
   private async syncTransactionsForItem(
     user: any,
     accessToken: string,
-    card: any,
     roundUpSetting: any,
   ) {
     const { id: userId } = user;
@@ -245,14 +240,14 @@ export class PlaidTransactionsJob {
 
     // Process payment and save records in a transaction
 
-    await this.processPaymentAndSaveRecords(
-      user,
-      card,
-      limitedRoundUps,
-      totalRoundUp,
-      roundUpSetting,
-      now,
-    );
+    // await this.processPaymentAndSaveRecords(
+    //   user,
+    //   card,
+    //   limitedRoundUps,
+    //   totalRoundUp,
+    //   roundUpSetting,
+    //   now,
+    // );
   }
 
   private async processPaymentAndSaveRecords(

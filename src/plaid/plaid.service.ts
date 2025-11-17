@@ -107,7 +107,8 @@ export class PlaidService {
         institutionName = institutionResponse.data.institution?.name || null;
       }
 
-      const encryptedToken = encrypt(access_token);
+      // const encryptedToken = encrypt(access_token);
+      const encryptedToken = access_token;
 
       // 3️⃣ Save PlaidItem
       const plaidItem = await this.prisma.plaidItem.create({

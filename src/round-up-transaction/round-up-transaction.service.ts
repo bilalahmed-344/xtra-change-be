@@ -118,6 +118,9 @@ export class RoundUpTransactionService {
 
     for (const item of plaidItems) {
       const accessToken = decrypt(item.accessToken);
+      if (!accessToken) {
+        continue; // skip this item
+      }
       const response = await this.plaidService.getTransactionsFromPlaid(
         accessToken,
         startDate,
