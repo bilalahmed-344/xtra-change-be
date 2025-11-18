@@ -19,10 +19,18 @@ import { RoundUpChargedModule } from './round-up-charged/round-up-charged.module
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { S3Module } from './s3/s3.module';
+import { BullModule } from '@nestjs/bullmq';
+
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+      },
+    }),
     PrismaModule,
     AuthModule,
     UserModule,

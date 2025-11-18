@@ -1,9 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable, Logger } from '@nestjs/common';
+import { Queue } from 'bullmq';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class RoundUpChargedService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(RoundUpChargedService.name);
+
+  constructor(
+    @InjectQueue('roundup-charge') private readonly queue: Queue,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async addChargeJob(userId: string) {
+    this.logger.log(`Adding charge job to queue for user ${userId}`);
+    await this.queue.add('charge-user', { userId });
+  }
 
   async getAllChargedTransactions({
     userId,

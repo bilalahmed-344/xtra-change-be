@@ -68,7 +68,7 @@ export class PlaidService {
         language: 'en',
         // redirect_uri:
         //   'https://xtra-change-be.onrender.com/api/v1/plaid/oauth-return',
-        android_package_name: 'com.xtrachange',
+        // android_package_name: 'com.xtrachange',
       };
 
       const response = await this.plaidClient.linkTokenCreate(request);

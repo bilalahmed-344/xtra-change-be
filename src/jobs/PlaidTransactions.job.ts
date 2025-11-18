@@ -8,6 +8,7 @@ import {
   TransactionsGetRequest,
 } from 'plaid';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { RoundUpChargedService } from 'src/round-up-charged/round-up-charged.service';
 import { StripeService } from 'src/stripe/stripe.service';
 import { decrypt } from 'src/utils/crypto.util';
 import { calculateRoundUp, toCents } from 'src/utils/roundup';
@@ -16,11 +17,13 @@ import { calculateRoundUp, toCents } from 'src/utils/roundup';
 export class PlaidTransactionsJob {
   private readonly logger = new Logger(PlaidTransactionsJob.name);
   private plaidClient: PlaidApi;
+  private isJobRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
     private configService: ConfigService,
     private readonly stripeService: StripeService,
+    private readonly roundUpChargeService: RoundUpChargedService,
   ) {
     const configuration = new Configuration({
       basePath: this.getPlaidEnvironment(),
@@ -38,12 +41,12 @@ export class PlaidTransactionsJob {
   private getPlaidEnvironment() {
     const env = this.configService.get<string>('plaid.env');
     switch (env) {
-      // case 'sandbox':
-      //   return PlaidEnvironments.sandbox;
-      // case 'development':
-      //   return PlaidEnvironments.development;
-      // case 'production':
-      //   return PlaidEnvironments.production;
+      case 'sandbox':
+        return PlaidEnvironments.sandbox;
+      case 'development':
+        return PlaidEnvironments.development;
+      case 'production':
+        return PlaidEnvironments.production;
       default:
         return PlaidEnvironments.sandbox;
     }
@@ -54,7 +57,7 @@ export class PlaidTransactionsJob {
   //   @Cron(CronExpression.EVERY_6_HOURS)
   //   @Cron(CronExpression.EVERY_MINUTE)
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_6_HOURS)
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
 
@@ -64,12 +67,11 @@ export class PlaidTransactionsJob {
           roundUpSetting: {
             // only users that have a roundUpSetting record
             isNot: null,
-          }, // todo
+          },
         },
         include: {
           plaidItems: true,
           roundUpSetting: true,
-          // cards: { where: { isDefault: true } }, //  todo
         },
       });
 
@@ -108,8 +110,6 @@ export class PlaidTransactionsJob {
       try {
         const accessToken = item.accessToken;
 
-        this.logger.error(`accessToken`, accessToken);
-
         // const accessToken = decrypt(item.accessToken);
         if (!accessToken) {
           this.logger.error(
@@ -125,6 +125,16 @@ export class PlaidTransactionsJob {
         );
       }
     }
+    // AFTER processing all items, check if it's time to charge
+    const now = new Date();
+
+    // if (roundUpSetting.nextRunAt && now >= roundUpSetting.nextRunAt) {
+    //   this.logger.log(
+    //     `⏰ Charging time reached for user ${user.id}. Enqueueing charge job...`,
+    //   );
+
+    // await this.roundUpChargeService.addChargeJob(user.id);
+    // }
   }
 
   private async syncTransactionsForItem(
@@ -140,24 +150,24 @@ export class PlaidTransactionsJob {
     );
     const endDateObj = new Date();
 
-    const existingChargeForPeriod =
-      await this.prisma.chargedTransaction.findFirst({
-        where: {
-          userId,
-          status: 'SUCCESS',
-          createdAt: {
-            gte: startDateObj,
-            lte: endDateObj,
-          },
-        },
-      });
+    // const existingChargeForPeriod =
+    //   await this.prisma.chargedTransaction.findFirst({
+    //     where: {
+    //       userId,
+    //       status: 'SUCCESS',
+    //       createdAt: {
+    //         gte: startDateObj,
+    //         lte: endDateObj,
+    //       },
+    //     },
+    //   });
 
-    if (existingChargeForPeriod) {
-      this.logger.log(
-        `⏭️ User ${userId} already charged between ${startDateObj.toISOString()} and ${endDateObj.toISOString()}. Skipping duplicate charge.`,
-      );
-      return;
-    }
+    // if (existingChargeForPeriod) {
+    //   this.logger.log(
+    //     `⏭️ User ${userId} already charged between ${startDateObj.toISOString()} and ${endDateObj.toISOString()}. Skipping duplicate charge.`,
+    //   );
+    //   return;
+    // }
 
     // testing code
 
@@ -179,7 +189,6 @@ export class PlaidTransactionsJob {
     let response;
     try {
       response = await this.plaidClient.transactionsGet(request);
-      this.logger.log(`response`, response);
     } catch (error) {
       this.logger.error(
         `Failed to fetch Plaid transactions for user ${userId}`,
@@ -199,7 +208,6 @@ export class PlaidTransactionsJob {
 
       const roundUpCents = calculateRoundUp(toCents(tx.amount));
       const roundUpAmount = roundUpCents / 100;
-      this.logger.log(`roundUpAmount `, roundUpAmount);
 
       if (roundUpAmount > 0) {
         allRoundUps.push({ tx, roundUpAmount });
@@ -245,17 +253,137 @@ export class PlaidTransactionsJob {
 
     // Process payment and save records in a transaction
 
-    // await this.processPaymentAndSaveRecords(
-    //   user,
-    //   card,
-    //   limitedRoundUps,
-    //   totalRoundUp,
-    //   roundUpSetting,
-    //   now,
-    // );
+    await this.pendingPaymentAndSaveRecords(
+      user,
+      limitedRoundUps,
+      totalRoundUp,
+    );
   }
 
-  private async processPaymentAndSaveRecords(
+  private async pendingPaymentAndSaveRecords(
+    user: any,
+    limitedRoundUps: {
+      tx: any;
+      roundUpAmount: number;
+      allowedAmount: number;
+    }[],
+    totalRoundUp: number,
+  ) {
+    const userId = user.id;
+
+    try {
+      // Use database transaction for atomicity
+
+      for (const { tx: plaidTx, allowedAmount } of limitedRoundUps) {
+        await this.prisma.$transaction(async (prismaClient) => {
+          try {
+            await this.pendingIndividualTransaction(
+              prismaClient,
+              plaidTx,
+              userId,
+              allowedAmount,
+            );
+          } catch (error) {
+            this.logger.error(
+              `Failed to process transaction ${plaidTx.transaction_id}`,
+              error,
+            );
+          }
+        });
+      }
+
+      this.logger.log(
+        `✅ Successfully processed $${totalRoundUp.toFixed(2)} for user ${userId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `❌ Error processing payment for user ${userId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
+  private async pendingIndividualTransaction(
+    prismaClient: any,
+    plaidTx: any,
+    userId: string,
+    allowedRoundUp: number,
+  ) {
+    // Check if already processed
+    const existingRoundUp = await prismaClient.roundUpTransaction.findFirst({
+      where: {
+        plaidTransaction: {
+          transactionId: plaidTx.transaction_id,
+        },
+      },
+    });
+
+    if (
+      existingRoundUp &&
+      ['INVESTED', 'SUCCEEDED'].includes(existingRoundUp.status)
+    ) {
+      this.logger.debug(
+        `⏭️ Skipping already processed transaction ${plaidTx.transaction_id}`,
+      );
+      return;
+    }
+
+    // Find or get account
+    const account = await prismaClient.plaidAccount.findUnique({
+      where: { accountId: plaidTx.account_id },
+      include: { plaidItem: true },
+    });
+
+    if (!account) {
+      this.logger.warn(
+        `Account ${plaidTx.account_id} not found for transaction ${plaidTx.transaction_id}`,
+      );
+      return;
+    }
+
+    // Upsert Plaid transaction
+    const savedPlaidTx = await prismaClient.plaidTransaction.upsert({
+      where: { transactionId: plaidTx.transaction_id },
+      update: {
+        name: plaidTx.name,
+        amount: plaidTx.amount,
+        date: new Date(plaidTx.date),
+        category: plaidTx.category?.join(', ') || null,
+      },
+      create: {
+        plaidAccountId: account.id,
+        transactionId: plaidTx.transaction_id,
+        name: plaidTx.name,
+        amount: plaidTx.amount,
+        date: new Date(plaidTx.date),
+        category: plaidTx.category?.join(', ') || null,
+      },
+    });
+
+    const amount = Number(plaidTx.amount);
+    const detectedAmount = amount + allowedRoundUp;
+    // Create/update round-up transaction
+    await prismaClient.roundUpTransaction.upsert({
+      where: { plaidTransactionId: savedPlaidTx.id },
+      update: {
+        roundUpAmount: allowedRoundUp,
+        detectedAmount,
+        status: 'PENDING',
+        failureReason: null,
+      },
+      create: {
+        userId,
+        plaidTransactionId: savedPlaidTx.id,
+        roundUpAmount: allowedRoundUp,
+        detectedAmount,
+        status: 'PENDING',
+        failureReason: null,
+      },
+    });
+  }
+
+  private async chagerPaymentAndSaveRecords(
     user: any,
     card: any,
     limitedRoundUps: {
