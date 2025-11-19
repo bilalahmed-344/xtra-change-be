@@ -1,5 +1,7 @@
 # Use official Node.js LTS image as the base
-FROM node:18-alpine
+# FROM node:18-alpine
+FROM node:20
+
 
 # Set working directory
 WORKDIR /app
@@ -20,4 +22,5 @@ RUN npm install
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "run","start:dev"]
+# CMD ["npm", "run","start:dev"]
+CMD ["npm", "run", "start:prod"]
