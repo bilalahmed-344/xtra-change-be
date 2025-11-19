@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StripeService } from './stripe.service';
+import { Public } from 'src/auth/auth.guard';
 
 @Controller('stripe')
 export class StripeWebhookController {
@@ -14,6 +15,7 @@ export class StripeWebhookController {
     private readonly stripeService: StripeService,
   ) {}
 
+  @Public()
   @Post('webhook')
   async handleStripeWebhook(@Req() req: Request, @Res() res: Response) {
     const sig = req.headers['stripe-signature'] as string;
