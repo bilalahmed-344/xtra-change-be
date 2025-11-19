@@ -305,3 +305,5 @@ If you have any questions or need help, please:
 # docker builder prune -af
 
 # docker build -t xtra-change-be-app .
+
+# docker run -d -p 3000:3000 --env-file .env --name xtra-change-be-app xtra-change-be-app
