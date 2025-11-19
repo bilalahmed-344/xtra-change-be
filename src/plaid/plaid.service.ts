@@ -68,7 +68,7 @@ export class PlaidService {
         language: 'en',
         // redirect_uri:
         //   'https://xtra-change-be.onrender.com/api/v1/plaid/oauth-return',
-        // android_package_name: 'com.xtrachange',
+        android_package_name: 'com.xtrachange',
       };
 
       const response = await this.plaidClient.linkTokenCreate(request);
@@ -107,8 +107,8 @@ export class PlaidService {
         institutionName = institutionResponse.data.institution?.name || null;
       }
 
-      // const encryptedToken = encrypt(access_token);
-      const encryptedToken = access_token;
+      const encryptedToken = encrypt(access_token);
+      // const encryptedToken = access_token;
 
       // 3️⃣ Save PlaidItem
       const plaidItem = await this.prisma.plaidItem.create({

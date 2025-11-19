@@ -108,9 +108,9 @@ export class PlaidTransactionsJob {
 
     for (const item of user.plaidItems) {
       try {
-        const accessToken = item.accessToken;
+        // const accessToken = item.accessToken;
 
-        // const accessToken = decrypt(item.accessToken);
+        const accessToken = decrypt(item.accessToken);
         if (!accessToken) {
           this.logger.error(
             `❌ Failed to decrypt accessToken for user ${user.id}, item ${item.id}. Skipping this item.`,
