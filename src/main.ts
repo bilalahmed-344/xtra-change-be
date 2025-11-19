@@ -41,7 +41,7 @@ async function bootstrap() {
   app.use(
     json({
       verify: (req: any, res, buf) => {
-        if (!req.originalUrl.startsWith('/stripe/webhook')) {
+        if (!req.originalUrl.startsWith('/api/v1/stripe/webhook')) {
           req.rawBody = buf;
         }
       },
