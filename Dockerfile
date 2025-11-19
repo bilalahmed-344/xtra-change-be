@@ -28,58 +28,17 @@
 # CMD ["npm", "run","start:dev"]
 # # CMD ["npm", "run", "start:prod"]
 
-
-
-
-# new one
-
-# Build stage
-# FROM node:18-alpine AS builder
-# WORKDIR /app
-
-# COPY package*.json ./
-# RUN npm ci   # better than npm install for reproducible builds
-
-# COPY . .
-# RUN npx prisma generate
-# RUN npm run build
-
-# # Production stage
-# FROM node:18-alpine AS production
-# WORKDIR /app
-
-# # Copy only necessary files from builder
-# COPY --from=builder /app/dist ./dist
-# COPY --from=builder /app/node_modules ./node_modules
-# COPY --from=builder /app/package*.json ./
-# COPY --from=builder /app/prisma ./prisma
-
-# # Generate Prisma client again (in case base image differs)
-# RUN npx prisma generate
-
-# EXPOSE 3000
-
-# # Run migrations and then start the app (recommended)
-# CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
-
-
-# 2. Make sure Dockerfile is clean (this one is bulletproof)
-
-FROM node:18-alpine AS builder
+FROM node:20
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN RUN npm install 
 COPY . .
 RUN npx prisma generate
+ENV NODE_ENV=development
 RUN npm run build
-
-FROM node:18-alpine
-WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
-RUN npx prisma generate
-
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
+ENTRYPOINT ["/bin/sh", "-c", "npm run prisma:migrate && npm run start:prod"]
+# HEALTHCHECK --interval=30s --timeout=3s \
+#   CMD curl -f http://localhost:3000/api/up || exit 1
+
+
