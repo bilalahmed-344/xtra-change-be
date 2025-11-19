@@ -29,15 +29,37 @@
 # # CMD ["npm", "run", "start:prod"]
 
 FROM node:20
+
+# Set working directory
 WORKDIR /app
+
+
+# Copy package files
 COPY package*.json ./
-RUN RUN npm install 
+
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the app
 COPY . .
+
+# Generate Prisma client
 RUN npx prisma generate
+
+# Set environment
 ENV NODE_ENV=development
+
+# Build the NestJS app
 RUN npm run build
+
+# Expose the port
 EXPOSE 3000
+
+# Run migrations and start the app
 ENTRYPOINT ["/bin/sh", "-c", "npm run prisma:migrate && npm run start:prod"]
+
+
 # HEALTHCHECK --interval=30s --timeout=3s \
 #   CMD curl -f http://localhost:3000/api/up || exit 1
 
