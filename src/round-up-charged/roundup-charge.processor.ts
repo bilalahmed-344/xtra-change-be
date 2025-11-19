@@ -1,8 +1,11 @@
-// src/roundup/roundup-charge.processor.ts
 import { Processor, WorkerHost, OnQueueEvent } from '@nestjs/bullmq';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StripeService } from 'src/stripe/stripe.service';
 import { Logger } from '@nestjs/common';
+
+interface RoundUpJobData {
+  userId: string;
+}
 
 @Processor('roundup-charge')
 export class RoundUpChargeProcessor extends WorkerHost {
@@ -15,9 +18,8 @@ export class RoundUpChargeProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: any) {
+  async process(job: { data: RoundUpJobData }) {
     const { userId } = job.data;
-    this.logger.log(`process Processing charge job for user ${userId}`);
 
     const now = new Date();
 
@@ -25,7 +27,8 @@ export class RoundUpChargeProcessor extends WorkerHost {
       where: { userId },
       include: { user: { include: { cards: true } } },
     });
-    this.logger.log(`setting`, setting);
+
+    this.logger.debug(`Setting: ${JSON.stringify(setting)}`);
 
     if (!setting) {
       this.logger.warn(`No RoundUpSetting found for user ${userId}`);
@@ -37,19 +40,15 @@ export class RoundUpChargeProcessor extends WorkerHost {
     //   return;
     // }
 
-    // const card = setting.user.cards?.[0];
-    // if (!card || !card.stripeCardId) {
-    //   this.logger.warn(`No card found for user ${userId}`);
-    //   return;
-    // }
+    const card = setting.user.cards?.[0];
+    if (!card || !card.stripeCardId) {
+      this.logger.warn(`No card found for user ${userId}`);
+      return;
+    }
 
     const pendingTransactions = await this.prisma.roundUpTransaction.findMany({
       where: { userId, status: 'PENDING' },
     });
-    console.log(
-      '🚀 ~ RoundUpChargeProcessor ~ process ~ pendingTransactions:',
-      pendingTransactions,
-    );
 
     if (!pendingTransactions.length) {
       this.logger.log(`No pending transactions for user ${userId}`);
@@ -60,78 +59,81 @@ export class RoundUpChargeProcessor extends WorkerHost {
       (sum, tx) => sum + tx.roundUpAmount,
       0,
     );
-    console.log(
-      '🚀 ~ RoundUpChargeProcessor ~ process ~ pendingTransactions:',
-      totalAmount,
-    );
-    // try {
-    //   const paymentIntent = await this.stripeService.createPaymentIntent({
-    //     amount: Math.round(totalAmount * 100),
-    //     customerId: setting.user.stripeCustomerId,
-    //     paymentMethodId: card.stripeCardId,
-    //   });
 
-    //   const success = paymentIntent.status === 'succeeded';
+    if (!setting.user.stripeCustomerId) {
+      this.logger.warn(
+        `Cannot charge user ${userId} because stripeCustomerId is missing`,
+      );
+      return;
+    }
 
-    //   await this.prisma.$transaction(async (prisma) => {
-    //     // Charged transaction
-    //     await prisma.chargedTransaction.create({
-    //       data: {
-    //         userId,
-    //         cardId: card.id,
-    //         chargedAmount: totalAmount,
-    //         status: success ? 'SUCCESS' : 'FAILED',
-    //         stripePaymentIntentId: paymentIntent.id,
-    //         failureReason: success
-    //           ? null
-    //           : paymentIntent.last_payment_error?.message,
-    //       },
-    //     });
+    try {
+      const paymentIntent = await this.stripeService.createPaymentIntent({
+        amount: Math.round(totalAmount * 100),
+        customerId: setting.user.stripeCustomerId,
+        paymentMethodId: card.stripeCardId,
+      });
 
-    //     // Update round-up transactions
-    //     for (const tx of pendingTransactions) {
-    //       await prisma.roundUpTransaction.update({
-    //         where: { id: tx.id },
-    //         data: {
-    //           status: success ? 'INVESTED' : 'PENDING',
-    //           stripePaymentIntentId: paymentIntent.id,
-    //         },
-    //       });
-    //     }
+      const success = paymentIntent.status === 'succeeded';
 
-    //     // Update RoundUpSetting
-    //     await prisma.roundUpSetting.update({
-    //       where: { id: setting.id },
-    //       data: {
-    //         lastRunAt: now,
-    //         nextRunAt: this.getNextRunDateByFrequency(
-    //           setting.paymentFrequency,
-    //           now,
-    //         ),
-    //       },
-    //     });
-    //   });
+      await this.prisma.$transaction(async (prisma) => {
+        // Charged transaction
+        await prisma.chargedTransaction.create({
+          data: {
+            userId,
+            cardId: card.id,
+            chargedAmount: totalAmount,
+            status: success ? 'SUCCESS' : 'FAILED',
+            stripePaymentIntentId: paymentIntent.id,
+            failureReason: success
+              ? null
+              : paymentIntent.last_payment_error?.message,
+          },
+        });
 
-    //   this.logger.log(
-    //     `✅ Successfully charged user ${userId} $${totalAmount.toFixed(2)}`,
-    //   );
-    // } catch (error) {
+        // Update round-up transactions
+        for (const tx of pendingTransactions) {
+          await prisma.roundUpTransaction.update({
+            where: { id: tx.id },
+            data: {
+              status: success ? 'INVESTED' : 'PENDING',
+              stripePaymentIntentId: paymentIntent.id,
+            },
+          });
+        }
 
-    //   await this.prisma.chargedTransaction.create({
-    //     data: {
-    //       userId,
-    //       cardId: card.stripeCardId,
-    //       chargedAmount: totalAmount,
-    //       status: 'FAILED',
-    //       stripePaymentIntentId: null,
-    //       failureReason: error.message || 'Stripe API failure',
-    //     },
-    //   });
-    //   this.logger.error(
-    //     `❌ Failed charging user ${userId}: ${error.message}`,
-    //     error.stack,
-    //   );
-    // }
+        // Update RoundUpSetting
+        await prisma.roundUpSetting.update({
+          where: { id: setting.id },
+          data: {
+            lastRunAt: now,
+            nextRunAt: this.getNextRunDateByFrequency(
+              setting.paymentFrequency,
+              now,
+            ),
+          },
+        });
+      });
+
+      this.logger.log(
+        `✅ Successfully charged user ${userId} $${totalAmount.toFixed(2)}`,
+      );
+    } catch (error) {
+      await this.prisma.chargedTransaction.create({
+        data: {
+          userId,
+          cardId: card.stripeCardId,
+          chargedAmount: totalAmount,
+          status: 'FAILED',
+          stripePaymentIntentId: null,
+          failureReason: (error as Error)?.message ?? 'Stripe API failure',
+        },
+      });
+      this.logger.error(
+        `❌ Failed charging user ${userId}: ${error.message}`,
+        error.stack,
+      );
+    }
   }
 
   private getNextRunDateByFrequency(frequency: string, fromDate: Date): Date {

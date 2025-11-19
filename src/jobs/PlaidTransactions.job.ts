@@ -133,7 +133,7 @@ export class PlaidTransactionsJob {
     //     `⏰ Charging time reached for user ${user.id}. Enqueueing charge job...`,
     //   );
 
-    // await this.roundUpChargeService.addChargeJob(user.id);
+    await this.roundUpChargeService.addChargeJob(user.id);
     // }
   }
 

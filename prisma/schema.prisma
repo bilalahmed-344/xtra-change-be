@@ -72,7 +72,7 @@ model RoundUpSetting {
   roundUpLimit     Float? 
 
   lastRunAt        DateTime?
-  nextRunAt        DateTime?  // revmmmm
+  nextRunAt        DateTime?  
 
   
   createdAt   DateTime @default(now())
