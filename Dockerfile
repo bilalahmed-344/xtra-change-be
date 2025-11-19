@@ -64,7 +64,7 @@
 
 
 # 2. Make sure Dockerfile is clean (this one is bulletproof)
-cat > Dockerfile << 'EOF'
+
 FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
