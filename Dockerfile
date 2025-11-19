@@ -10,12 +10,14 @@ WORKDIR /app
 COPY package*.json ./
 
 
+# Install dependencies
+RUN npm install 
 
 # Copy the rest of the application code
 COPY . .
 
-# Install dependencies
-RUN npm install 
+# Build the NestJS project
+RUN npm run build
 
 
 # Expose the port your app runs on
