@@ -10,47 +10,63 @@
 #     env_file:
 #       - .env # This will load the .env file in the current directory
 
+# version: '3.8'
+
+# services:
+#   db:
+#     image: postgres:15-alpine
+#     container_name: postgres
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: postgres
+#       POSTGRES_DB: myapp
+#     ports:
+#       - '5432:5432'
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ['CMD-SHELL', 'pg_isready -U postgres']
+#       interval: 5s
+#       timeout: 5s
+#       retries: 10
+
+#   app:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: nestjs-app
+#     restart: unless-stopped
+#     ports:
+#       - '3000:3000'
+#     env_file:
+#       - .env
+#     environment:
+#       # Important: inside Docker, the DB host is the service name "db"
+#       - postgresql://postgres:NIvW7vcwzIy3zIEV@xtra.cvg4usam0kqz.us-east-2.rds.amazonaws.com/xtra_change_4amg
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#     volumes:
+#       # Optional: for live code reload in dev (remove in prod)
+#       - .:/app
+#       - /app/node_modules
+
+# volumes:
+#   postgres_data:
+
+# version:lineno
 version: '3.8'
 
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: myapp
-    ports:
-      - '5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nestjs-app
+    container_name: xtra-change-be-app
     restart: unless-stopped
     ports:
       - '3000:3000'
-    env_file:
-      - .env
     environment:
-      # Important: inside Docker, the DB host is the service name "db"
-      - postgresql://postgres:NIvW7vcwzIy3zIEV@xtra.cvg4usam0kqz.us-east-2.rds.amazonaws.com/xtra_change_4amg
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      # Optional: for live code reload in dev (remove in prod)
-      - .:/app
-      - /app/node_modules
-
-volumes:
-  postgres_data:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:NIvW7vcwzIy3zIEV@xtra.cvg4usam0kqz.us-east-2.rds.amazonaws.com/xtra_change_4amg
