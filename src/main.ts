@@ -32,7 +32,7 @@ async function bootstrap() {
   // --- Stripe Webhook Route (raw body required) ---
 
   app.use(
-    '/stripe/webhook',
+    '/api/v1/stripe/webhook',
     express.raw({ type: 'application/json' }), // raw body for Stripe
   );
 
