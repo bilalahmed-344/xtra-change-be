@@ -56,6 +56,11 @@
 #   postgres_data:
 
 # version:lineno
+
+
+
+
+cat > docker-compose.yml << 'EOF'
 version: '3.8'
 
 services:
@@ -70,3 +75,4 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:NIvW7vcwzIy3zIEV@xtra.cvg4usam0kqz.us-east-2.rds.amazonaws.com/xtra_change_4amg
+EOF

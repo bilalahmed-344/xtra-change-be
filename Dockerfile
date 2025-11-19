@@ -64,27 +64,31 @@
 
 
 
-cat > docker-compose.yml << 'EOF'
-version: '3.8'
+# 1. Fix the Dockerfile (restore the correct one)
+cat > Dockerfile << 'EOF'
+# Build stage
+FROM node:18-alpine AS builder
+WORKDIR /app
 
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: xtra-change-be-app
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:NEW_PASSWORD_HERE@xtra.cvg4usam0kqz.us-east-2.rds.amazonaws.com/xtra_change_4amg
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npx prisma generate
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+WORKDIR /app
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
+
+RUN npx prisma generate
+
+EXPOSE 3000
+
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
 EOF
-
-# 3. Rebuild and start fresh
-docker compose down --remove-orphans
-docker rm -f xtra-change-be-app 2>/dev/null || true
-docker compose up -d --build
-
-# 4. Watch logs — it WILL work this time
-docker logs -f xtra-change-be-app
