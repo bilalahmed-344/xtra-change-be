@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
-
+RUN npx prisma generate
 
 # Install dependencies
 RUN npm install 
