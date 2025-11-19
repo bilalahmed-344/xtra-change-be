@@ -10,17 +10,44 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable CORS
+
+  app.enableCors();
+
+  // Global prefix
+  app.setGlobalPrefix('api/v1');
+
+  // Serve public/.well-known if needed
+
+  app.use(
+    '/.well-known',
+    express.static(join(__dirname, '..', 'public', '.well-known')),
+  );
+
+  // Health check route
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.send('✅ Welcome! Your NestJS server is running.');
+  });
+
+  // --- Stripe Webhook Route (raw body required) ---
+
+  app.use(
+    '/stripe/webhook',
+    express.raw({ type: 'application/json' }), // raw body for Stripe
+  );
+
+  // --- Global JSON Parser for all other routes ---
+
   app.use(
     json({
-      verify: (req: any, res, buf, encoding) => {
-        try {
+      verify: (req: any, res, buf) => {
+        if (!req.originalUrl.startsWith('/stripe/webhook')) {
           req.rawBody = buf;
-        } catch (err) {
-          throw new Error('Invalid body');
         }
       },
     }),
   );
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -28,16 +55,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  app.setGlobalPrefix('api/v1');
-  app.enableCors();
-  app.use(
-    '/.well-known',
-    express.static(join(__dirname, '..', 'public', '.well-known')),
-  );
 
-  app.getHttpAdapter().get('/', (req, res) => {
-    res.send('✅ Welcome! Your NestJS server is running.');
-  });
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

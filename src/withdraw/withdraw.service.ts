@@ -29,21 +29,22 @@ export class WithdrawService {
 
     // Check user balance (implement your balance logic) TODO
 
-    // Ensure user has a Stripe Connect account
-
     try {
-      // const bankDetails = {
-      //   account_holder_name: dto.name,
-      //   account_holder_type: 'individual',
-      //   routing_number: dto.routingNumber,
-      //   account_number: dto.accountNumber,
-      // };
-      const connectAccountId =
-        await this.stripeService.getOrCreateConnectAccount(
-          user.id,
+      let connectAccountId: string;
+      try {
+        connectAccountId = await this.stripeService.getOrCreateConnectAccount(
+          userId,
           ipAddress,
           dto,
         );
+      } catch (error) {
+        this.logger.error(
+          `❌ Failed to get/create Stripe account for user ${userId}: ${error.message}`,
+        );
+        throw new BadRequestException(
+          'Failed to process withdrawal: ' + error.message,
+        );
+      }
 
       // Attach bank account to the connect account (Stripe: external account) 527 account type
       // const bankAccount = await this.stripeService.addExternalBankAccount(
@@ -59,6 +60,10 @@ export class WithdrawService {
       if (process.env.NODE_ENV !== 'production') {
         await this.stripeService.createTestFunding(connectAccountId);
       }
+      console.log(
+        '🚀 ~ WithdrawService ~ requestWithdrawal ~ connectAccountId:',
+        connectAccountId,
+      );
 
       // // Create payout (amount is provided in main currency unit)
       // const payout = await this.stripeService.createPayout(
@@ -68,6 +73,15 @@ export class WithdrawService {
 
       // console.log('🚀 ~ WithdrawService ~ requestWithdrawal ~ payout:', payout);
 
+      const withdrawal = await this.prisma.withdrawal.create({
+        data: {
+          userId,
+          amount: dto.amount,
+          status: 'PENDING',
+          stripeAccountId: connectAccountId,
+          requestedAt: new Date(),
+        },
+      });
       // // Persist withdrawal record
       // const withdrawal = await this.prisma.withdrawal.create({
       //   data: {
@@ -82,33 +96,27 @@ export class WithdrawService {
       //   },
       // });
 
-      // return {
-      //   success: true,
-      //   message: 'Withdrawal request submitted successfully',
-      //   withdrawal,
-      //   payout,
-      // };
+      return {
+        success: true,
+        message:
+          'Withdrawal request submitted. It will be processed when your Stripe account is ready.',
+        withdrawal,
+      };
     } catch (error) {
       this.logger.error(
         `❌ Withdrawal failed for user ${userId}: ${error.message}`,
       );
 
       // Save failed attempt in DB
-      const failedWithdrawal = await this.prisma.withdrawal.create({
-        data: {
-          userId,
-          amount: dto.amount,
-          status: 'FAILED',
-          failureReason: error.message,
-          requestedAt: new Date(),
-        },
-      });
-
-      throw new BadRequestException({
-        message: 'Withdrawal request failed',
-        reason: error.message,
-        withdrawal: failedWithdrawal,
-      });
+      // const failedWithdrawal = await this.prisma.withdrawal.create({
+      //   data: {
+      //     userId,
+      //     amount: dto.amount,
+      //     status: 'FAILED',
+      //     failureReason: error.message,
+      //     requestedAt: new Date(),
+      //   },
+      // });
     }
   }
 

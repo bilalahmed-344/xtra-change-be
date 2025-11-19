@@ -131,6 +131,8 @@ export class StripeService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
+    console.log('🚀 ~ StripeService ~ getOrCreateConnectAccount ~ user:', user);
+
     if (user.stripeConnectId) {
       // Check if account is restricted and needs update
       const existingAccount = await this.stripe.accounts.retrieve(
@@ -156,7 +158,7 @@ export class StripeService {
         first_name: user.firstName ?? 'Test',
         last_name: user.lastName ?? 'User',
         email: user.email ?? 'no-email@example.com',
-        phone: user.phoneNumber ?? '+10000000000',
+        phone: user.phoneNumber?.replace(/\s+/g, '') ?? '+10000000000',
 
         dob: {
           day: 2,
@@ -171,7 +173,8 @@ export class StripeService {
           postal_code: user.postal_code ?? '10001',
           country: user?.country ?? 'US',
         },
-        // id_number: '000000000',
+        ssn_last_4: '0000',
+        id_number: '000000000',
       },
 
       tos_acceptance: {
@@ -189,7 +192,8 @@ export class StripeService {
         object: 'bank_account',
         account_holder_name:
           dto?.account_holder_name ?? `${user.firstName ?? 'Test User'}`,
-        account_holder_type: dto?.account_holder_type ?? 'individual',
+        // account_holder_type: dto?.account_holder_type ?? 'individual',
+        account_holder_type: 'individual',
         routing_number: dto?.routing_number ?? '110000000',
         account_number: dto?.account_number ?? '000123456789',
         country: 'US',
@@ -198,8 +202,16 @@ export class StripeService {
 
       metadata: { userId },
     };
+    console.log(
+      '🚀 ~ StripeService ~ getOrCreateConnectAccount ~ accountParams:',
+      accountParams,
+    );
 
     const account = await this.stripe.accounts.create(accountParams);
+    console.log(
+      '🚀 ~ StripeService ~ getOrCreateConnectAccount ~ account:',
+      account,
+    );
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -338,5 +350,13 @@ export class StripeService {
       description: 'Test funding for Express account',
       destination: { account: connectAccountId },
     });
+  }
+
+  constructEvent(
+    payload: Buffer,
+    sig: string,
+    endpointSecret: string,
+  ): Stripe.Event {
+    return this.stripe.webhooks.constructEvent(payload, sig, endpointSecret);
   }
 }
