@@ -8,7 +8,10 @@ import * as express from 'express';
 import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true, // Enable raw body for the entire app
+  });
 
   // Enable CORS
 
@@ -31,22 +34,22 @@ async function bootstrap() {
 
   // --- Stripe Webhook Route (raw body required) ---
 
-  app.use(
-    '/api/v1/stripe/webhook',
-    express.raw({ type: 'application/json' }), // raw body for Stripe
-  );
+  // app.use(
+  //   '/api/v1/stripe/webhook',
+  //   express.raw({ type: 'application/json' }), // raw body for Stripe
+  // );
 
-  // --- Global JSON Parser for all other routes ---
+  // // --- Global JSON Parser for all other routes ---
 
-  app.use(
-    json({
-      verify: (req: any, res, buf) => {
-        if (!req.originalUrl.startsWith('/api/v1/stripe/webhook')) {
-          req.rawBody = buf;
-        }
-      },
-    }),
-  );
+  // app.use(
+  //   json({
+  //     verify: (req: any, res, buf) => {
+  //       if (!req.originalUrl.startsWith('/api/v1/stripe/webhook')) {
+  //         req.rawBody = buf;
+  //       }
+  //     },
+  //   }),
+  // );
 
   app.useGlobalPipes(
     new ValidationPipe({
