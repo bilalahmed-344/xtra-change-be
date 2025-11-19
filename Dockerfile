@@ -1,6 +1,6 @@
 # Use official Node.js LTS image as the base
 # FROM node:18-alpine
-FROM node:20
+FROM node:18-alpine
 
 
 # Set working directory
