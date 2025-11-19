@@ -30,49 +30,31 @@
 
 
 
-# Use Node.js 20 Alpine for smaller image size
-FROM node:20-alpine
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Create app directory
+# Build stage
+FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nestjs -u 1001
+COPY package*.json ./
+RUN npm ci   # better than npm install for reproducible builds
 
-# Copy package files
-COPY --chown=nestjs:nodejs package.json ./
-COPY --chown=nestjs:nodejs yarn.lock ./
+COPY . .
+RUN npx prisma generate
+RUN npm run build
 
-# Install dependencies
-RUN yarn install --frozen-lockfile --production=false
+# Production stage
+FROM node:18-alpine AS production
+WORKDIR /app
 
-# Copy prisma schema first for better caching
-COPY --chown=nestjs:nodejs prisma ./prisma/
+# Copy only necessary files from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
 
-# Generate Prisma client
+# Generate Prisma client again (in case base image differs)
 RUN npx prisma generate
 
-# Copy source code
-COPY --chown=nestjs:nodejs . .
-
-# Build the application
-RUN yarn build
-
-# Remove dev dependencies to reduce image size
-RUN yarn install --frozen-lockfile --production=true && yarn cache clean
-
-# Switch to non-root user
-USER nestjs
-
-# Expose port
 EXPOSE 3000
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start the application
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Run migrations and then start the app (recommended)
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start:prod"]
