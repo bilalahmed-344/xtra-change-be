@@ -287,3 +287,21 @@ If you have any questions or need help, please:
 
 <!-- PG pass NIvW7vcwzIy3zIEV -->
 <!-- sudo service redis-server start -->
+
+# Remove all stopped containers
+
+# docker container prune -f
+
+# Remove all unused images
+
+# docker image prune -af
+
+# Remove unused volumes
+
+# docker volume prune -f
+
+# Remove build cache
+
+# docker builder prune -af
+
+# docker build -t xtra-change-be-app .
