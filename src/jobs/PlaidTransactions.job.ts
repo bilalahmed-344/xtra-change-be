@@ -17,7 +17,6 @@ import { calculateRoundUp, toCents } from 'src/utils/roundup';
 export class PlaidTransactionsJob {
   private readonly logger = new Logger(PlaidTransactionsJob.name);
   private plaidClient: PlaidApi;
-  private isJobRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -57,7 +56,7 @@ export class PlaidTransactionsJob {
   //   @Cron(CronExpression.EVERY_6_HOURS)
   //   @Cron(CronExpression.EVERY_MINUTE)
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_6_HOURS)
   async syncAllUserTransactions() {
     this.logger.log('🔄 Starting Plaid transactions sync job...');
 
