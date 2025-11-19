@@ -20,19 +20,23 @@ export class StripeWebhookController {
   @Public()
   @Post('webhook')
   async handleStripeWebhook(@Req() req: Request, @Res() res: Response) {
-    const sig = req.headers['stripe-signature'] as string;
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    this.logger.error(`Webhook signature verification failed: ${sig}`);
-    let event: Stripe.Event;
-    if (!endpointSecret) {
-      throw new Error(
-        'STRIPE_WEBHOOK_SECRET is not defined in environment variables',
-      );
-    }
+    // const sig = req.headers['stripe-signature'] as string;
+    // const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    // this.logger.error(`Webhook signature verification failed: ${sig}`);
+    // let event: Stripe.Event;
+    // if (!endpointSecret) {
+    //   throw new Error(
+    //     'STRIPE_WEBHOOK_SECRET is not defined in environment variables',
+    //   );
+    // }
 
     try {
       // Verify webhook signature
-      event = this.stripeService.constructEvent(req.body, sig, endpointSecret);
+      event = this.stripeService.constructEvent(
+        req.body,
+        'sig',
+        'endpointSecret',
+      );
     } catch (err) {
       this.logger.error(
         `Webhook signature verification failed: ${err.message}`,
@@ -42,27 +46,27 @@ export class StripeWebhookController {
         .send(`Webhook Error: ${err.message}`);
     }
 
-    try {
-      switch (event.type) {
-        case 'capability.updated':
-          await this.handleCapabilityUpdated(
-            event.data.object as Stripe.Capability,
-          );
-          break;
+    // try {
+    //   switch (event.type) {
+    //     case 'capability.updated':
+    //       await this.handleCapabilityUpdated(
+    //         event.data.object as Stripe.Capability,
+    //       );
+    //       break;
 
-        case 'payout.paid':
-        case 'payout.failed':
-          await this.handlePayoutEvent(event);
-          break;
+    //     case 'payout.paid':
+    //     case 'payout.failed':
+    //       await this.handlePayoutEvent(event);
+    //       break;
 
-        default:
-          this.logger.log(`Unhandled event type: ${event.type}`);
-      }
-      res.json({ received: true });
-    } catch (err) {
-      this.logger.error(`Webhook handling failed: ${err.message}`);
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
-    }
+    //     default:
+    //       this.logger.log(`Unhandled event type: ${event.type}`);
+    //   }
+    //   res.json({ received: true });
+    // } catch (err) {
+    //   this.logger.error(`Webhook handling failed: ${err.message}`);
+    //   res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
+    // }
   }
 
   private async handleCapabilityUpdated(capability: Stripe.Capability) {
