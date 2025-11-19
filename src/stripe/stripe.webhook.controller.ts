@@ -13,7 +13,9 @@ export class StripeWebhookController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
-  ) {}
+  ) {
+    this.logger.log('✅ StripeWebhookController initialized');
+  }
 
   @Public()
   @Post('webhook')
@@ -64,6 +66,10 @@ export class StripeWebhookController {
   }
 
   private async handleCapabilityUpdated(capability: Stripe.Capability) {
+    this.logger.log(
+      `Processing capability.updated for capability: ${capability.id}`,
+    );
+
     if (capability.id !== 'transfers') return; // We only care about transfers capability
 
     if (capability.status === 'active') {
