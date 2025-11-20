@@ -34,6 +34,7 @@ async function bootstrap() {
   });
 
   // --- Stripe Webhook Route (raw body required) ---
+  app.use('/stripe/webhook', bodyParser.raw({ type: '*/*' }));
 
   // app.use(
   //   '/api/v1/stripe/webhook',

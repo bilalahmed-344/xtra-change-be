@@ -6,7 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { StripeWebhookController } from './stripe.webhook.controller';
 
 @Module({
-  controllers: [StripeWebhookController], // ← Make sure this is here!
+  controllers: [StripeWebhookController],
   imports: [ConfigModule, PrismaModule],
   providers: [StripeService, PrismaService],
   exports: [StripeService],

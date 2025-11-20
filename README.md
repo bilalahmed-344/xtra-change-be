@@ -321,3 +321,5 @@ If you have any questions or need help, please:
   xtra-change-be-app -->
 
 # docker logs -f xtra-change-be-app
+
+# sudo service redis-server start

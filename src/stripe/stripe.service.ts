@@ -131,8 +131,6 @@ export class StripeService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    console.log('🚀 ~ StripeService ~ getOrCreateConnectAccount ~ user:', user);
-
     if (user.stripeConnectId) {
       // Check if account is restricted and needs update
       const existingAccount = await this.stripe.accounts.retrieve(
@@ -202,16 +200,8 @@ export class StripeService {
 
       metadata: { userId },
     };
-    console.log(
-      '🚀 ~ StripeService ~ getOrCreateConnectAccount ~ accountParams:',
-      accountParams,
-    );
 
     const account = await this.stripe.accounts.create(accountParams);
-    console.log(
-      '🚀 ~ StripeService ~ getOrCreateConnectAccount ~ account:',
-      account,
-    );
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -219,12 +209,12 @@ export class StripeService {
     });
 
     // Check if there are still requirements
-    const accountDetails = await this.stripe.accounts.retrieve(account.id);
-    console.log('Account Status:', {
-      charges_enabled: accountDetails.charges_enabled,
-      payouts_enabled: accountDetails.payouts_enabled,
-      requirements: accountDetails.requirements,
-    });
+    // const accountDetails = await this.stripe.accounts.retrieve(account.id);
+    // console.log('Account Status:', {
+    //   charges_enabled: accountDetails.charges_enabled,
+    //   payouts_enabled: accountDetails.payouts_enabled,
+    //   requirements: accountDetails.requirements,
+    // });
 
     // if (accountDetails.requirements?.currently_due?.length > 0) {
     //   throw new BadRequestException({

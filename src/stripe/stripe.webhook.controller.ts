@@ -32,7 +32,11 @@ export class StripeWebhookController {
 
     try {
       // Verify webhook signature
-      event = this.stripeService.constructEvent(req.body, sig, endpointSecret);
+      event = this.stripeService.constructEvent(
+        req['rawBody'],
+        sig,
+        endpointSecret,
+      );
     } catch (err) {
       this.logger.error(
         `Webhook signature verification failed: ${err.message}`,
