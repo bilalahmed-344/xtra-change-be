@@ -9,17 +9,13 @@ import { join } from 'path';
 
 async function bootstrap() {
   // const app = await NestFactory.create(AppModule);
-  const app = await NestFactory.create(AppModule, {
-    rawBody: true,
-  });
+  const app = await NestFactory.create(AppModule);
 
   app.use(
-    bodyParser.json({
-      verify: (req: any, res, buf) => {
-        req.rawBody = buf.toString(); // Save raw body for HMAC calculation
-      },
-    }),
+    '/api/v1/stripe/webhook',
+    bodyParser.raw({ type: 'application/json' }),
   );
+  app.use(bodyParser.json());
 
   // Enable CORS
 
