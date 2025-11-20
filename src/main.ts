@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import bodyParser, { json } from 'body-parser';
+import * as bodyParser from 'body-parser';
 import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
@@ -11,10 +11,16 @@ async function bootstrap() {
   // const app = await NestFactory.create(AppModule);
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
-    bodyParser: true,
   });
 
-  // app.use('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }));
+  app.use(
+    bodyParser.json({
+      verify: (req: any, res, buf) => {
+        req.rawBody = buf.toString(); // Save raw body for HMAC calculation
+      },
+    }),
+  );
+
   // Enable CORS
 
   app.enableCors();
