@@ -59,6 +59,21 @@ export class StripeWebhookController {
             event.data.object as Stripe.Capability,
           );
           break;
+        // ADD THIS → catches test mode + some live edge cases
+        case 'account.updated':
+          const account = event.data.object as Stripe.Account;
+          if (account.capabilities?.transfers === 'active') {
+            this.logger.log(
+              `Fallback: transfers active via account.updated for ${account.id}`,
+            );
+            const fakeCapability = {
+              id: 'transfers',
+              status: 'active',
+              account: account.id,
+            } as any;
+            await this.handleCapabilityUpdated(fakeCapability);
+          }
+          break;
 
         case 'payout.paid':
         case 'payout.failed':
