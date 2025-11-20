@@ -25,7 +25,8 @@ export class StripeWebhookController {
     this.logger.log(`req.body`, req.body);
 
     // const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const endpointSecret = 'whsec_ZqUiSDK0OI26OSoj5od911c87hoeUxS9';
+    // const endpointSecret = 'whsec_ZqUiSDK0OI26OSoj5od911c87hoeUxS9';
+    const endpointSecret = 'whsec_FZy1jz7ZGx8SdWC6PklxPCSemhCzxGgR';
     this.logger.error(`Webhook signature verification failed: ${sig}`);
     let event: Stripe.Event;
 
