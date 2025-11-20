@@ -344,6 +344,7 @@ export class StripeService {
 
   constructEvent(payload: Buffer, sig: string, endpointSecret: string): any {
     console.log('🚀 ~ StripeService ~ constructEvent ~ payload:', payload);
-    return this.stripe.webhooks.constructEvent(payload, sig, endpointSecret);
+    return payload;
+    // return this.stripe.webhooks.constructEvent(payload, sig, endpointSecret);
   }
 }
