@@ -19,7 +19,11 @@ export class StripeWebhookController {
 
   @Public()
   @Post('webhook')
-  async handleStripeWebhook(@Req() req: Request, @Res() res: Response) {
+  // async handleStripeWebhook(@Req() req: Request, @Res() res: Response) {
+  async handleStripeWebhook(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const sig = req.headers['stripe-signature'] as string;
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
     this.logger.error(`Webhook signature verification failed: ${sig}`);
@@ -32,11 +36,7 @@ export class StripeWebhookController {
 
     try {
       // Verify webhook signature
-      event = this.stripeService.constructEvent(
-        req['rawBody'],
-        sig,
-        endpointSecret,
-      );
+      event = this.stripeService.constructEvent(req.body, sig, endpointSecret);
     } catch (err) {
       this.logger.error(
         `Webhook signature verification failed: ${err.message}`,

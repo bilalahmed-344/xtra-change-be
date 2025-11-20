@@ -8,12 +8,13 @@ import * as express from 'express';
 import { join } from 'path';
 
 async function bootstrap() {
-  // const app = await NestFactory.create(AppModule);
-  const app = await NestFactory.create(AppModule, {
-    rawBody: true,
-    bodyParser: true,
-  });
+  const app = await NestFactory.create(AppModule);
+  // const app = await NestFactory.create(AppModule, {
+  //   rawBody: true,
+  //   bodyParser: true,
+  // });
 
+  app.use('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }));
   // Enable CORS
 
   app.enableCors();
@@ -34,7 +35,7 @@ async function bootstrap() {
   });
 
   // --- Stripe Webhook Route (raw body required) ---
-  app.use('/stripe/webhook', bodyParser.raw({ type: '*/*' }));
+  // app.use('/stripe/webhook', bodyParser.raw({ type: '*/*' }));
 
   // app.use(
   //   '/api/v1/stripe/webhook',
@@ -58,6 +59,7 @@ async function bootstrap() {
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
+      skipMissingProperties: false,
     }),
   );
 
