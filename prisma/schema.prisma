@@ -33,8 +33,7 @@ model User {
   updatedAt   DateTime @updatedAt
 
   stripeCustomerId String?
-  stripeConnectId   String? 
-  cards Card[]
+  stripeConnectId String?  @unique   
   roundUpSetting  RoundUpSetting?
   roundUpTransactions  RoundUpTransaction[]
   plaidItems       PlaidItem[]
@@ -42,7 +41,8 @@ model User {
 
   chargedTransactions  ChargedTransaction[]
 
-   
+  cards Card[]
+
 
 }
 
