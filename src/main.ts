@@ -9,13 +9,19 @@ import { join } from 'path';
 
 async function bootstrap() {
   // const app = await NestFactory.create(AppModule);
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
 
   app.use(
-    '/api/v1/stripe/webhook',
-    bodyParser.raw({ type: 'application/json' }),
+    bodyParser.json({
+      verify: (req: any, res, buf) => {
+        req.rawBody = buf.toString();
+      },
+    }),
   );
-  app.use(bodyParser.json());
+
+  // app.use(bodyParser.json());
 
   // Enable CORS
 
