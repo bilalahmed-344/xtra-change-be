@@ -36,7 +36,7 @@ export class StripeWebhookController {
     //   '🚀 ~ StripeWebhookController ~ handleStripeWebhook ~ sig:',
     //   sig,
     // );
-    console.log('🚀 ~ StripeWebhookController ~  req:', req['rawBody']);
+    console.log('🚀 ~ StripeWebhookController ~  req:', req.body);
 
     try {
       // Verify webhook signature
