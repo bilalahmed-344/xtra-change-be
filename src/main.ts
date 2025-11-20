@@ -8,19 +8,20 @@ import * as express from 'express';
 import { join } from 'path';
 
 async function bootstrap() {
-  // const app = await NestFactory.create(AppModule);
-  const app = await NestFactory.create(AppModule, {
-    rawBody: true,
-  });
+  const app = await NestFactory.create(AppModule);
+  // const app = await NestFactory.create(AppModule, {
+  //   rawBody: true,
+  // });
 
   app.use(
-    bodyParser.json({
-      verify: (req: any, res, buf) => {
-        req.rawBody = buf.toString();
-      },
-    }),
+    '/api/v1/stripe/webhook',
+    express.raw({ type: 'application/json' }), // ← raw Buffer
   );
 
+  // Normal JSON parser for everything else
+  // 2. Normal JSON for everything else
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
   // app.use(bodyParser.json());
 
   // Enable CORS

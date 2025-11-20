@@ -50,6 +50,8 @@ export class StripeWebhookController {
         .send(`Webhook Error: ${err.message}`);
     }
 
+    console.log('🚀 ~ event.type', event.type);
+
     try {
       switch (event.type) {
         case 'capability.updated':
