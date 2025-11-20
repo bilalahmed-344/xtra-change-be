@@ -13,15 +13,23 @@ async function bootstrap() {
     rawBody: true,
   });
 
-  app.use(
-    '/api/v1/stripe/webhook',
-    express.raw({ type: '*/*' }), // accept any type
-  );
+  // app.use(
+  //   '/api/v1/stripe/webhook',
+  //   express.raw({ type: 'application/json' }),
+  // );
 
   // Normal JSON parser for everything else
-  // 2. Normal JSON for everything else
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // app.use(
+  //   express.json({
+  //     verify: (req: any, res, buf) => {
+  //       // If it's the webhook route, we already handled it with express.raw()
+  //       // So we just save raw body for other routes if needed (optional)
+  //       if (buf?.length) {
+  //         req.rawBody = buf.toString('utf8');
+  //       }
+  //     },
+  //   }),
+  // );
   // app.use(bodyParser.json());
 
   // Enable CORS
