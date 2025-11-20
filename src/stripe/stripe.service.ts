@@ -159,9 +159,9 @@ export class StripeService {
         phone: user.phoneNumber?.replace(/\s+/g, '') ?? '+10000000000',
 
         dob: {
-          day: 2,
-          month: 3,
-          year: 1999,
+          day: 15,
+          month: 6,
+          year: 1990,
         },
 
         address: {

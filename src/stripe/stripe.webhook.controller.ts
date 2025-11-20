@@ -19,15 +19,12 @@ export class StripeWebhookController {
 
   @Public()
   @Post('webhook')
-  // async handleStripeWebhook(@Req() req: Request, @Res() res: Response) {
-  async handleStripeWebhook(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async handleStripeWebhook(@Req() req: Request, @Res() res: Response) {
     const sig = req.headers['stripe-signature'] as string;
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
     this.logger.error(`Webhook signature verification failed: ${sig}`);
     let event: Stripe.Event;
+
     if (!endpointSecret) {
       throw new Error(
         'STRIPE_WEBHOOK_SECRET is not defined in environment variables',
