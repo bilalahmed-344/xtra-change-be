@@ -8,14 +8,14 @@ import * as express from 'express';
 import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  // const app = await NestFactory.create(AppModule, {
-  //   rawBody: true,
-  // });
+  // const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
 
   app.use(
     '/api/v1/stripe/webhook',
-    express.raw({ type: 'application/json' }), // ← raw Buffer
+    express.raw({ type: '*/*' }), // accept any type
   );
 
   // Normal JSON parser for everything else
