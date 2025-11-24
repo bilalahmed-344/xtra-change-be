@@ -373,4 +373,8 @@ export class StripeService {
       );
     }
   }
+
+  async retrieveBalance(): Promise<Stripe.Balance> {
+    return this.stripe.balance.retrieve();
+  }
 }

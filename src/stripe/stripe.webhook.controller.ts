@@ -121,16 +121,22 @@ export class StripeWebhookController {
 
       for (const withdrawal of pendingWithdrawals) {
         try {
-          // 1️⃣ Create a Transfer from platform to connected account
+          // 1️ Create a Transfer from platform to connected account
+          const amountInCents = Math.round(withdrawal.amount * 100);
+
           const transfer = await this.stripeService.createTransfer({
-            amount: withdrawal.amount,
+            amount: amountInCents,
             destination: accountId,
             metadata: { withdrawalId: withdrawal.id },
           });
+          console.log(
+            '🚀 ~ StripeWebhookController ~ handleCapabilityUpdated ~ transfer:',
+            transfer,
+          );
 
           const payout = await this.stripeService.createPayout(
             accountId,
-            withdrawal.amount,
+            amountInCents,
           );
 
           await this.prisma.withdrawal.update({
