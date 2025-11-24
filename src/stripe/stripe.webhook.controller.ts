@@ -134,16 +134,16 @@ export class StripeWebhookController {
             transfer,
           );
 
-          const payout = await this.stripeService.createPayout(
-            accountId,
-            amountInCents,
-          );
+          // const payout = await this.stripeService.createPayout(
+          //   accountId,
+          //   amountInCents,
+          // );
 
           await this.prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: {
               status: 'PROCESSING',
-              stripePayoutId: payout.id,
+              // stripePayoutId: payout.id,
               stripeTransferId: transfer.id,
               processedAt: new Date(),
             },
@@ -166,8 +166,13 @@ export class StripeWebhookController {
 
   private async handlePayoutEvent(event: Stripe.Event) {
     const payout = event.data.object as Stripe.Payout;
+    this.logger.log(
+      `Received payout event: ${payout.id} - Status: ${payout.status}`,
+    );
+
     const withdrawal = await this.prisma.withdrawal.findFirst({
       where: { stripePayoutId: payout.id },
+      orderBy: { processedAt: 'desc' },
     });
 
     if (!withdrawal) return;
@@ -175,12 +180,19 @@ export class StripeWebhookController {
     if (event.type === 'payout.paid') {
       await this.prisma.withdrawal.update({
         where: { id: withdrawal.id },
-        data: { status: 'COMPLETED' },
+        data: {
+          status: 'COMPLETED',
+          stripePayoutId: payout.id,
+        },
       });
     } else if (event.type === 'payout.failed') {
       await this.prisma.withdrawal.update({
         where: { id: withdrawal.id },
-        data: { status: 'FAILED', failureReason: 'Payout failed in Stripe' },
+        data: {
+          status: 'FAILED',
+          failureReason: payout.failure_message || 'Payout failed in Stripe',
+          stripePayoutId: payout.id,
+        },
       });
     }
   }
