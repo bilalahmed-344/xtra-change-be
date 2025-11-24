@@ -138,16 +138,21 @@ export class StripeWebhookController {
             transfer,
           );
 
-          // const payout = await this.stripeService.createPayout(
-          //   accountId,
-          //   amountInCents,
-          // );
+          const payout = await this.stripeService.createPayout(
+            accountId,
+            amountInCents,
+            withdrawal.id,
+          );
+          console.log(
+            '🚀 ~ StripeWebhookController ~ handleCapabilityUpdated ~ payout:',
+            payout,
+          );
 
           await this.prisma.withdrawal.update({
             where: { id: withdrawal.id },
             data: {
               status: 'PROCESSING',
-              // stripePayoutId: payout.id,
+              stripePayoutId: payout.id,
               stripeTransferId: transfer.id,
               processedAt: new Date(),
             },

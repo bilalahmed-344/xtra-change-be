@@ -259,11 +259,16 @@ export class StripeService {
     });
   }
 
-  async createPayout(connectAccountId: string, amount: number) {
+  async createPayout(
+    connectAccountId: string,
+    amount: number,
+    withdrawal: string,
+  ) {
     return this.stripe.payouts.create(
       {
-        amount: Math.round(amount * 100),
+        amount: amount,
         currency: 'usd',
+        metadata: { withdrawalId: withdrawal },
       },
       { stripeAccount: connectAccountId },
     );
