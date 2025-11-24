@@ -183,9 +183,8 @@ export class StripeWebhookController {
 
     const withdrawal = await this.prisma.withdrawal.findFirst({
       where: {
-        stripeAccountId: connectedAccountId, // ✅ Match by account ID
-        status: 'PROCESSING', // ✅ Only get processing withdrawals
-        stripePayoutId: null, // ✅ Only ones without payout ID yet
+        stripeAccountId: connectedAccountId,
+        status: 'PROCESSING',
       },
       orderBy: { processedAt: 'desc' },
     });
