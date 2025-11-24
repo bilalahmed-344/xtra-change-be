@@ -162,6 +162,7 @@ model Withdrawal {
   id              String   @id @default(uuid())
   userId          String
   amount          Float
+  stripeTransferId String? 
   currency        String   @default("usd")
   status          WithdrawalStatus @default(PENDING)
   stripePayoutId  String?  // returned from Stripe

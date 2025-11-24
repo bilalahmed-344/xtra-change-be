@@ -20,6 +20,7 @@ export class WithdrawService {
   async requestWithdrawal(userId: string, dto: WithdrawDto, ipAddress: string) {
     // 1. Validate user
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
     if (!user) throw new NotFoundException('User not found');
 
     if (dto.amount <= 0) {
@@ -38,13 +39,15 @@ export class WithdrawService {
       throw new BadRequestException('Stripe Connect account not created.');
     }
 
-    // 3. (Test mode only) Add fake funds so Stripe allows payouts
-    // if (process.env.NODE_ENV !== 'production') {
-    //   await this.stripeService.createTestFunding(connectAccountId);
-    // }
+    if (dto.amount <= 0) {
+      throw new BadRequestException('Withdrawal amount must be positive');
+    }
 
-    // ❗ DO NOT create the payout now.
-    // Capability webhook will create the payout when transfers become active.
+    // TODO
+
+    // if (user.walletBalance < dto.amount) {
+    //   throw new BadRequestException('Insufficient wallet balance');
+    // }
 
     // 4. Create withdrawal with PENDING status
     const withdrawal = await this.prisma.withdrawal.create({
@@ -53,8 +56,6 @@ export class WithdrawService {
         amount: dto.amount,
         status: 'PENDING',
         stripeAccountId: connectAccountId,
-        stripePayoutId: null,
-        failureReason: null,
         requestedAt: new Date(),
       },
     });

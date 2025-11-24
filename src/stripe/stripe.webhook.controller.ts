@@ -64,6 +64,7 @@ export class StripeWebhookController {
           break;
         // ADD THIS → catches test mode + some live edge cases
         case 'account.updated':
+          // await this.handleAccountUpdated(event.data.object as Stripe.Account);
           const account = event.data.object as Stripe.Account;
           if (account.capabilities?.transfers === 'active') {
             this.logger.log(
@@ -120,6 +121,13 @@ export class StripeWebhookController {
 
       for (const withdrawal of pendingWithdrawals) {
         try {
+          // 1️⃣ Create a Transfer from platform to connected account
+          const transfer = await this.stripeService.createTransfer({
+            amount: withdrawal.amount,
+            destination: accountId,
+            metadata: { withdrawalId: withdrawal.id },
+          });
+
           const payout = await this.stripeService.createPayout(
             accountId,
             withdrawal.amount,
@@ -130,6 +138,7 @@ export class StripeWebhookController {
             data: {
               status: 'PROCESSING',
               stripePayoutId: payout.id,
+              stripeTransferId: transfer.id,
               processedAt: new Date(),
             },
           });
@@ -167,6 +176,24 @@ export class StripeWebhookController {
         where: { id: withdrawal.id },
         data: { status: 'FAILED', failureReason: 'Payout failed in Stripe' },
       });
+    }
+  }
+
+  // ——————————————————————————
+  // Handle account.updated fallback
+  // ——————————————————————————
+  private async handleAccountUpdated(account: Stripe.Account) {
+    if (account.capabilities?.transfers === 'active') {
+      const fakeCapability = {
+        id: 'transfers',
+        status: 'active',
+        account: account.id,
+      } as any;
+
+      this.logger.log(
+        `Fallback transfer-activation detected for ${account.id}`,
+      );
+      await this.handleCapabilityUpdated(fakeCapability);
     }
   }
 }

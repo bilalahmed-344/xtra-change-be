@@ -262,7 +262,7 @@ export class StripeService {
   async createPayout(connectAccountId: string, amount: number) {
     return this.stripe.payouts.create(
       {
-        amount: Math.round(amount * 100), // convert to cents
+        amount: Math.round(amount * 100),
         currency: 'usd',
       },
       { stripeAccount: connectAccountId },
@@ -343,7 +343,34 @@ export class StripeService {
   }
 
   constructEvent(payload: Buffer, sig: string, endpointSecret: string): any {
-    console.log('🚀 ~ StripeService ~ constructEvent ~ payload:', payload);
     return this.stripe.webhooks.constructEvent(payload, sig, endpointSecret);
+  }
+
+  async createTransfer({
+    amount,
+    destination,
+    currency = 'usd',
+    metadata,
+  }: {
+    amount: number;
+    destination: string;
+    currency?: string;
+    metadata?: Record<string, any>;
+  }): Promise<Stripe.Transfer> {
+    try {
+      const transfer = await this.stripe.transfers.create({
+        amount,
+        currency,
+        destination,
+        metadata,
+      });
+
+      return transfer;
+    } catch (err) {
+      // Bubble up error to handle in caller
+      throw new Error(
+        `Failed to create transfer to ${destination}: ${err.message}`,
+      );
+    }
   }
 }
