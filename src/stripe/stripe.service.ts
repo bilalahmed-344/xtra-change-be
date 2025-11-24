@@ -267,8 +267,12 @@ export class StripeService {
     return this.stripe.payouts.create(
       {
         amount: amount,
+        method: 'standard',
         currency: 'usd',
-        metadata: { withdrawalId: withdrawal },
+        metadata: {
+          withdrawalId: withdrawal,
+          source: 'user_withdrawal',
+        },
       },
       { stripeAccount: connectAccountId },
     );
