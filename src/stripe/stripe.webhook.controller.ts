@@ -128,15 +128,15 @@ export class StripeWebhookController {
           // 1️ Create a Transfer from platform to connected account
           const amountInCents = Math.round(withdrawal.amount * 100);
 
-          const transfer = await this.stripeService.createTransfer({
-            amount: amountInCents,
-            destination: accountId,
-            metadata: { withdrawalId: withdrawal.id },
-          });
-          console.log(
-            '🚀 ~ StripeWebhookController ~ handleCapabilityUpdated ~ transfer:',
-            transfer,
-          );
+          // const transfer = await this.stripeService.createTransfer({
+          //   amount: amountInCents,
+          //   destination: accountId,
+          //   metadata: { withdrawalId: withdrawal.id },
+          // });
+          // console.log(
+          //   '🚀 ~ StripeWebhookController ~ handleCapabilityUpdated ~ transfer:',
+          //   transfer,
+          // );
 
           const payout = await this.stripeService.createPayout(
             accountId,
@@ -153,7 +153,7 @@ export class StripeWebhookController {
             data: {
               status: 'PROCESSING',
               stripePayoutId: payout.id,
-              stripeTransferId: transfer.id,
+              // stripeTransferId: transfer.id,
               processedAt: new Date(),
             },
           });
@@ -197,6 +197,7 @@ export class StripeWebhookController {
         data: {
           status: 'COMPLETED',
           stripePayoutId: payout.id,
+          completedAt: new Date(),
         },
       });
     } else if (event.type === 'payout.failed') {
