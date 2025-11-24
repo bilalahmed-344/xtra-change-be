@@ -116,7 +116,11 @@ export class StripeWebhookController {
 
       // Fetch all pending withdrawals
       const pendingWithdrawals = await this.prisma.withdrawal.findMany({
-        where: { stripeAccountId: accountId, status: 'PENDING' },
+        where: {
+          stripeAccountId: accountId,
+          status: 'PENDING',
+          stripeTransferId: null,
+        },
       });
 
       for (const withdrawal of pendingWithdrawals) {
@@ -170,8 +174,14 @@ export class StripeWebhookController {
       `Received payout event: ${payout.id} - Status: ${payout.status}`,
     );
 
+    const connectedAccountId = (event as any).account;
+
     const withdrawal = await this.prisma.withdrawal.findFirst({
-      where: { stripePayoutId: payout.id },
+      where: {
+        stripeAccountId: connectedAccountId, // ✅ Match by account ID
+        status: 'PROCESSING', // ✅ Only get processing withdrawals
+        stripePayoutId: null, // ✅ Only ones without payout ID yet
+      },
       orderBy: { processedAt: 'desc' },
     });
 
