@@ -69,7 +69,13 @@ export class StripeWebhookController {
             event.data.object as Stripe.Account,
           );
           break;
+        case 'payout.paid':
+          await this.handlePayoutPaid(event.data.object as Stripe.Payout);
+          break;
 
+        case 'payout.failed':
+          await this.handlePayoutFailed(event.data.object as Stripe.Payout);
+          break;
         default:
           this.logger.log(`Unhandled event type: ${event.type}`);
       }
@@ -81,7 +87,6 @@ export class StripeWebhookController {
     }
   }
 
-  // Fallback for account.updated event
   private async handleAccountUpdatedFallback(account: Stripe.Account) {
     if (account.capabilities?.transfers === 'active') {
       this.logger.log(`Fallback: Transfers active detected for ${account.id}`);
@@ -124,10 +129,57 @@ export class StripeWebhookController {
           `Withdrawal ${withdrawal.id} marked READY for processing`,
         );
         // Push to background job
-        await this.withdrawalQueue.add('process-withdrawal', {
-          withdrawalId: withdrawal.id,
-        });
+        // await this.withdrawalQueue.add('process-withdrawal', {
+        //   withdrawalId: withdrawal.id,
+        // });
+        await this.withdrawalQueue.add(
+          'process-withdrawal',
+          { withdrawalId: withdrawal.id },
+          {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+          },
+        );
       }
     }
+  }
+  private async handlePayoutPaid(payout: Stripe.Payout) {
+    this.logger.log(`Payout paid: ${payout.id}`);
+
+    const withdrawal = await this.prisma.withdrawal.findFirst({
+      where: { stripePayoutId: payout.id },
+    });
+
+    if (!withdrawal) {
+      this.logger.warn(`No withdrawal found for payout ${payout.id}`);
+      return;
+    }
+
+    await this.prisma.withdrawal.update({
+      where: { id: withdrawal.id }, // always use the unique `id` here
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    });
+
+    this.logger.log(`Withdrawal ${withdrawal.id} marked COMPLETED`);
+  }
+
+  private async handlePayoutFailed(payout: Stripe.Payout) {
+    this.logger.log(`Payout failed: ${payout.id}`);
+
+    const withdrawal = await this.prisma.withdrawal.findFirst({
+      where: { stripePayoutId: payout.id },
+    });
+
+    if (!withdrawal) {
+      this.logger.warn(`No withdrawal found for payout ${payout.id}`);
+      return;
+    }
+
+    await this.prisma.withdrawal.update({
+      where: { id: withdrawal.id },
+      data: { status: 'FAILED', failureReason: 'Payout failed' },
+    });
+
+    this.logger.log(`Withdrawal ${withdrawal.id} marked FAILED`);
   }
 }
