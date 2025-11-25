@@ -125,25 +125,32 @@ export class StripeService {
     });
   }
 
-  async getOrCreateConnectAccount(userId: string, ipAddress: string, dto: any) {
+  async getOrCreateConnectAccount(userId: string, ipAddress: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
+    // ---------------------------------------------------------
+    //  If account already exists  return existing
+    // ---------------------------------------------------------
+
     if (user.stripeConnectId) {
-      // Check if account is restricted and needs update
       const existingAccount = await this.stripe.accounts.retrieve(
         user.stripeConnectId,
       );
       return existingAccount.id;
     }
 
-    // Prepare account creation params
+    // ---------------------------------------------------------
+    // Create Custom Connect Account (NO SSN, NO DOB, NO BANK HERE)
+    // Stripe will ask user during onboarding
+    // ---------------------------------------------------------
+
     const accountParams: Stripe.AccountCreateParams = {
       type: 'custom',
       country: 'US',
-      email: user.email ?? 'no-email@example.com',
+      email: user.email ?? undefined,
 
       capabilities: {
         transfers: { requested: true },
@@ -153,26 +160,26 @@ export class StripeService {
       business_type: 'individual',
 
       individual: {
-        first_name: user.firstName ?? 'Test',
-        last_name: user.lastName ?? 'User',
-        email: user.email ?? 'no-email@example.com',
+        first_name: user.firstName ?? undefined,
+        last_name: user.lastName ?? undefined,
+        email: user.email ?? undefined,
         phone: user.phoneNumber?.replace(/\s+/g, '') ?? '+10000000000',
 
-        dob: {
-          day: 15,
-          month: 6,
-          year: 1990,
-        },
+        // dob: {
+        //   day: 15,
+        //   month: 6,
+        //   year: 1990,
+        // },
 
         address: {
-          line1: user.address ?? '123 Main Street',
-          city: user.city ?? 'New York',
-          state: user.state ?? 'NY',
-          postal_code: user.postal_code ?? '10001',
-          country: user?.country ?? 'US',
+          line1: user.address ?? undefined,
+          city: user.city ?? undefined,
+          state: user.state ?? undefined,
+          postal_code: user.postal_code ?? undefined,
+          country: user.country ?? 'US',
         },
-        ssn_last_4: '0000',
-        id_number: '000000000',
+        // ssn_last_4: '0000',
+        // id_number: '000000000',
       },
 
       tos_acceptance: {
@@ -186,17 +193,17 @@ export class StripeService {
         url: 'https://yourapp.com',
       },
 
-      external_account: {
-        object: 'bank_account',
-        account_holder_name:
-          dto?.account_holder_name ?? `${user.firstName ?? 'Test User'}`,
-        // account_holder_type: dto?.account_holder_type ?? 'individual',
-        account_holder_type: 'individual',
-        routing_number: dto?.routing_number ?? '110000000',
-        account_number: dto?.account_number ?? '000123456789',
-        country: 'US',
-        currency: 'usd',
-      },
+      // external_account: {
+      //   object: 'bank_account',
+      //   account_holder_name:
+      //     dto?.account_holder_name ?? `${user.firstName ?? 'Test User'}`,
+      //   // account_holder_type: dto?.account_holder_type ?? 'individual',
+      //   account_holder_type: 'individual',
+      //   routing_number: dto?.routing_number ?? '110000000',
+      //   account_number: dto?.account_number ?? '000123456789',
+      //   country: 'US',
+      //   currency: 'usd',
+      // },
 
       metadata: { userId },
     };
@@ -208,23 +215,34 @@ export class StripeService {
       data: { stripeConnectId: account.id },
     });
 
-    // Check if there are still requirements
-    // const accountDetails = await this.stripe.accounts.retrieve(account.id);
-    // console.log('Account Status:', {
-    //   charges_enabled: accountDetails.charges_enabled,
-    //   payouts_enabled: accountDetails.payouts_enabled,
-    //   requirements: accountDetails.requirements,
-    // });
-
-    // if (accountDetails.requirements?.currently_due?.length > 0) {
-    //   throw new BadRequestException({
-    //     message: 'Additional information required',
-    //     requirements: accountDetails.requirements.currently_due,
-    //     errors: accountDetails.requirements.errors,
-    //   });
-    // }
-
     return account.id;
+  }
+
+  async attachBankAccount(connectId: string, dto: any) {
+    const accounts = await this.stripe.accounts.listExternalAccounts(
+      connectId,
+      {
+        object: 'bank_account',
+      },
+    );
+    // Already exists  Do nothing
+    if (accounts.data.length > 0) {
+      return accounts.data[0];
+    }
+    // Add new bank
+    const bank = await this.stripe.accounts.createExternalAccount(connectId, {
+      external_account: {
+        object: 'bank_account',
+        account_holder_name: dto.account_holder_name,
+        account_holder_type: 'individual',
+        routing_number: dto.routing_number,
+        account_number: dto.account_number,
+        country: 'US',
+        currency: 'usd',
+      },
+    });
+
+    return bank;
   }
 
   async addExternalBankAccount(

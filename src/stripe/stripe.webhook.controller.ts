@@ -137,6 +137,7 @@ export class StripeWebhookController {
           //   '🚀 ~ StripeWebhookController ~ handleCapabilityUpdated ~ transfer:',
           //   transfer,
           // );
+          console.log(amountInCents, 'amountun amountInCents');
 
           const payout = await this.stripeService.createPayout(
             accountId,

@@ -32,7 +32,7 @@ export class WithdrawService {
     const connectAccountId = await this.stripeService.getOrCreateConnectAccount(
       userId,
       ipAddress,
-      dto,
+      // dto,
     );
 
     if (!connectAccountId) {
@@ -43,13 +43,23 @@ export class WithdrawService {
       throw new BadRequestException('Withdrawal amount must be positive');
     }
 
+    //  Attach bank account (idempotent)
+    try {
+      await this.stripeService.attachBankAccount(connectAccountId, dto);
+    } catch (error) {
+      console.error('Bank attach error:', error);
+      throw new BadRequestException(
+        error?.message || 'Failed to attach bank account',
+      );
+    }
+
     // TODO
 
     // if (user.walletBalance < dto.amount) {
     //   throw new BadRequestException('Insufficient wallet balance');
     // }
 
-    // 4. Create withdrawal with PENDING status
+    //  Create withdrawal with PENDING status
     const withdrawal = await this.prisma.withdrawal.create({
       data: {
         userId,
@@ -60,7 +70,6 @@ export class WithdrawService {
       },
     });
 
-    // 5. Return response
     return {
       success: true,
       message:
@@ -68,102 +77,6 @@ export class WithdrawService {
       withdrawal,
     };
   }
-
-  // async requestWithdrawal(userId: string, dto: WithdrawDto, ipAddress: string) {
-  //   const user = await this.prisma.user.findUnique({
-  //     where: { id: userId },
-  //   });
-  //   if (!user) throw new NotFoundException('User not found');
-
-  //   if (dto.amount <= 0) {
-  //     throw new BadRequestException('Withdrawal amount must be positive');
-  //   }
-
-  //   // Check user balance (implement your balance logic) TODO
-
-  //   try {
-  //     let connectAccountId: string;
-  //     try {
-  //       connectAccountId = await this.stripeService.getOrCreateConnectAccount(
-  //         userId,
-  //         ipAddress,
-  //         dto,
-  //       );
-  //     } catch (error) {
-  //       this.logger.error(
-  //         `❌ Failed to get/create Stripe account for user ${userId}: ${error.message}`,
-  //       );
-  //     }
-
-  //     // Attach bank account to the connect account (Stripe: external account) 527 account type
-  //     // const bankAccount = await this.stripeService.addExternalBankAccount(
-  //     //   connectAccountId,
-  //     //   {
-  //     //     name: dto.name,
-  //     //     routingNumber: dto.routingNumber,
-  //     //     accountNumber: dto.accountNumber,
-  //     //   },
-  //     // );
-
-  //     // Step 2: (Test Mode Only) Add fake funds to Express account
-  //     if (process.env.NODE_ENV !== 'production') {
-  //       await this.stripeService.createTestFunding(connectAccountId);
-  //     }
-
-  //     // // Create payout (amount is provided in main currency unit)
-  //     // const payout = await this.stripeService.createPayout(
-  //     //   connectAccountId,
-  //     //   dto.amount,
-  //     // );
-
-  //     // console.log('🚀 ~ WithdrawService ~ requestWithdrawal ~ payout:', payout);
-
-  //     const withdrawal = await this.prisma.withdrawal.create({
-  //       data: {
-  //         userId,
-  //         amount: dto.amount,
-  //         status: 'PENDING',
-  //         stripeAccountId: connectAccountId,
-  //         requestedAt: new Date(),
-  //       },
-  //     });
-  //     // // Persist withdrawal record
-  //     // const withdrawal = await this.prisma.withdrawal.create({
-  //     //   data: {
-  //     //     userId,
-  //     //     amount: dto.amount,
-  //     //     status: 'PROCESSING',
-  //     //     failureReason: null,
-  //     //     stripePayoutId: payout.id,
-  //     //     stripeAccountId: connectAccountId,
-  //     //     requestedAt: new Date(),
-  //     //     processedAt: new Date(),
-  //     //   },
-  //     // });
-
-  //     return {
-  //       success: true,
-  //       message:
-  //         'Withdrawal request submitted. It will be processed when your Stripe account is ready.',
-  //       withdrawal,
-  //     };
-  //   } catch (error) {
-  //     this.logger.error(
-  //       `❌ Withdrawal failed for user ${userId}: ${error.message}`,
-  //     );
-
-  //     // Save failed attempt in DB
-  //     // const failedWithdrawal = await this.prisma.withdrawal.create({
-  //     //   data: {
-  //     //     userId,
-  //     //     amount: dto.amount,
-  //     //     status: 'FAILED',
-  //     //     failureReason: error.message,
-  //     //     requestedAt: new Date(),
-  //     //   },
-  //     // });
-  //   }
-  // }
 
   async checkWithdrawalStatus(withdrawalId: string) {
     const withdrawal = await this.prisma.withdrawal.findUnique({
