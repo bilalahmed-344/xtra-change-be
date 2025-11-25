@@ -180,6 +180,7 @@ enum WithdrawalStatus {
   PROCESSING
   COMPLETED
   FAILED
+  READY
 }
 
 
