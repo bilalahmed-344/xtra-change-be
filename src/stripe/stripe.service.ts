@@ -165,11 +165,11 @@ export class StripeService {
         email: user.email ?? undefined,
         phone: user.phoneNumber?.replace(/\s+/g, '') ?? '+10000000000',
 
-        // dob: {
-        //   day: 15,
-        //   month: 6,
-        //   year: 1990,
-        // },
+        dob: {
+          day: 15,
+          month: 6,
+          year: 1990,
+        },
 
         address: {
           line1: user.address ?? undefined,
@@ -178,7 +178,7 @@ export class StripeService {
           postal_code: user.postal_code ?? undefined,
           country: user.country ?? 'US',
         },
-        // ssn_last_4: '0000',
+        ssn_last_4: '0000',
         // id_number: '000000000',
       },
 
@@ -219,6 +219,11 @@ export class StripeService {
   }
 
   async attachBankAccount(connectId: string, dto: any) {
+    // Validate DTO
+    if (!dto.accountHolderName || !dto.routingNumber || !dto.accountNumber) {
+      throw new BadRequestException('Invalid bank details');
+    }
+
     const accounts = await this.stripe.accounts.listExternalAccounts(
       connectId,
       {
@@ -233,12 +238,12 @@ export class StripeService {
     const bank = await this.stripe.accounts.createExternalAccount(connectId, {
       external_account: {
         object: 'bank_account',
-        account_holder_name: dto.account_holder_name,
-        account_holder_type: 'individual',
-        routing_number: dto.routing_number,
-        account_number: dto.account_number,
+        account_number: dto.accountNumber,
+        routing_number: dto.routingNumber,
         country: 'US',
         currency: 'usd',
+        account_holder_name: dto.accountHolderName,
+        account_holder_type: 'individual',
       },
     });
 
