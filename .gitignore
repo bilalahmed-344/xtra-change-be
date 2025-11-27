@@ -64,3 +64,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 .gitignore
 README.md
+
+src/config/firebase/user.json
