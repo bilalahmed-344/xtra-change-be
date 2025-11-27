@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dtos/signup.dto';
 import { LoginDto } from './dtos/login.dto';
@@ -10,19 +10,15 @@ export class AuthController {
 
   @Public()
   @Post('signin')
-  async signInOrSignUp(@Body() dto: SignupDto | LoginDto) {
+  // async signInOrSignUp(
+  //   @Body() dto: SignupDto | (LoginDto & { fcmToken?: string }),
+  // ) {
+  async signInOrSignUp(
+    @Body() dto: SignupDto | (LoginDto & { fcmToken?: string }),
+  ) {
     return this.authService.signInOrSignUp(dto);
   }
 
-  // @Post('signup')
-  // async signUp(@Body() signupDto: SignupDto) {
-  //   return this.authService.signup(signupDto);
-  // }
-  // @Public()
-  // @Post('login')
-  // async login(@Body() loginDto: LoginDto) {
-  //   return this.authService.login(loginDto);
-  // }
   @Public()
   @Post('verify-otp')
   async verifyOtp(
@@ -45,5 +41,11 @@ export class AuthController {
     @Body('pin') pin: string,
   ) {
     return this.authService.verifyPin(phoneNumber, pin);
+  }
+
+  @Post('logout')
+  async logout(@Req() req) {
+    const userId = req.user.id;
+    return this.authService.logout(userId);
   }
 }

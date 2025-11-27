@@ -20,6 +20,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { S3Module } from './s3/s3.module';
 import { BullModule } from '@nestjs/bullmq';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { BullModule } from '@nestjs/bullmq';
       rootPath: join(__dirname, '..', 'public'),
       serveRoot: '/',
     }),
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

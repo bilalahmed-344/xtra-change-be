@@ -13,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { TwilioService } from 'src/twilio/twilio.service';
 import * as bcrypt from 'bcrypt';
 import { decrypt } from 'src/utils/crypto.util';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -20,9 +21,11 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private twilioService: TwilioService,
+    private notificationsService: NotificationsService, // inject here
   ) {}
 
-  async signInOrSignUp(dto: SignupDto | LoginDto) {
+  // async signInOrSignUp(dto: SignupDto | LoginDto) {
+  async signInOrSignUp(dto: SignupDto | (LoginDto & { fcmToken?: string })) {
     let user = await this.prisma.user.findUnique({
       where: { phoneNumber: dto.phoneNumber },
     });
@@ -32,12 +35,17 @@ export class AuthService {
       // User does not exist → signup flow
       user = await this.prisma.user.create({
         data: {
-          // email: (dto as SignupDto).email ?? '',
           phoneNumber: dto.phoneNumber,
           phoneVerified: false,
+          fcmToken: dto.fcmToken || null,
         },
       });
       newUser = true;
+    } else if (dto.fcmToken) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { fcmToken: dto.fcmToken },
+      });
     }
 
     // OTP = last 4 digits of phone (demo only)
@@ -47,7 +55,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         otpCode: otp,
-        otpExpiresAt: new Date(Date.now() + 20 * 60 * 1000),
+        otpExpiresAt: new Date(Date.now() + 20 * 60 * 1000), // 20 minutes
       },
     });
 
@@ -180,6 +188,7 @@ export class AuthService {
       userId: user.id,
     };
   }
+
   async setPin(userId: string, pin: string) {
     if (!userId) {
       throw new BadRequestException('User ID is required');
@@ -240,6 +249,8 @@ export class AuthService {
       where: { phoneNumber },
       include: {
         roundUpSetting: true,
+        cards: true,
+        plaidItems: true,
       },
     });
 
@@ -260,16 +271,66 @@ export class AuthService {
     if (plaidItem) {
       plaidAccessToken = plaidItem.accessToken;
     }
+
     const payload = { id: user.id };
     const token = this.jwtService.sign(payload);
+
+    if (user.fcmToken) {
+      const notifications = [] as { title: string; body: string }[];
+      if (!user.cards || user.cards.length === 0) {
+        notifications.push({
+          title: 'Add Card',
+          body: 'Please add a card to enable transactions.',
+        });
+      }
+      if (!user.plaidItems || user.plaidItems.length === 0) {
+        notifications.push({
+          title: 'Connect Bank',
+          body: 'Please connect your bank account via Plaid.',
+        });
+      }
+      if (!user.roundUpSetting) {
+        notifications.push({
+          title: 'Set Round-up',
+          body: 'Enable round-up settings to save automatically.',
+        });
+      }
+
+      for (const n of notifications) {
+        await this.notificationsService.sendNotification(
+          user.id,
+          user.fcmToken,
+          n.title,
+          n.body,
+        );
+      }
+    }
     const { pin, stripeConnectId, otpExpiresAt, otpCode, ...other } = user;
-
     const roundUpEnabled = !!user.roundUpSetting;
-
     return {
       message: 'Login successful',
       access_token: token,
       user: { plaidAccessToken, ...other, roundUpEnabled },
+    };
+  }
+
+  async logout(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Remove FCM token
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken: null },
+    });
+
+    return {
+      message: 'Logged out successfully',
     };
   }
 }

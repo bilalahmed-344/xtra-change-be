@@ -7,6 +7,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth.guard';
 import { UserModule } from 'src/user/user.module';
 import { TwilioService } from 'src/twilio/twilio.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { TwilioService } from 'src/twilio/twilio.service';
       useClass: AuthGuard,
     },
     TwilioService,
+    NotificationsService,
   ],
   controllers: [AuthController],
   exports: [AuthService],

@@ -18,4 +18,8 @@ export class SignupDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  fcmToken?: string;
 }

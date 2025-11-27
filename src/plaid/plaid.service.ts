@@ -12,6 +12,7 @@ import {
   CountryCode,
   Products,
 } from 'plaid';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { decrypt, encrypt } from 'src/utils/crypto.util';
 import { calculateRoundUp, toCents } from 'src/utils/roundup';
@@ -24,6 +25,7 @@ export class PlaidService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private notificationsService: NotificationsService,
   ) {
     const configuration = new Configuration({
       basePath: this.getPlaidEnvironment(),
@@ -41,12 +43,12 @@ export class PlaidService {
   private getPlaidEnvironment(): string {
     const env = this.configService.get<string>('plaid.env');
     switch (env) {
-      // case 'sandbox':
-      //   return PlaidEnvironments.sandbox;
-      // case 'development':
-      //   return PlaidEnvironments.development;
-      // case 'production':
-      //   return PlaidEnvironments.production;
+      case 'sandbox':
+        return PlaidEnvironments.sandbox;
+      case 'development':
+        return PlaidEnvironments.development;
+      case 'production':
+        return PlaidEnvironments.production;
       default:
         return PlaidEnvironments.sandbox;
     }
@@ -110,7 +112,7 @@ export class PlaidService {
       const encryptedToken = encrypt(access_token);
       // const encryptedToken = access_token;
 
-      // 3️⃣ Save PlaidItem
+      //  Save PlaidItem
       const plaidItem = await this.prisma.plaidItem.create({
         data: {
           userId,
@@ -133,12 +135,35 @@ export class PlaidService {
         include: { accounts: true },
       });
 
+      // Send success notification if FCM token exists
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.fcmToken) {
+        await this.notificationsService.sendNotification(
+          userId,
+          user.fcmToken,
+          'Bank Connected',
+          `Your bank account at ${institutionName || 'Plaid'} was connected successfully!`,
+        );
+      }
+
       return {
         plaidItem,
         access_token: encryptedToken,
         itemId: response.data.item_id,
       };
     } catch (error) {
+      //Send failure notification if FCM token exists
+
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.fcmToken) {
+        await this.notificationsService.sendNotification(
+          userId,
+          user.fcmToken,
+          'Bank Connection Failed',
+          'We could not connect your bank account. Please try again.',
+        );
+      }
+
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           const target = error.meta?.target as string[] | undefined;

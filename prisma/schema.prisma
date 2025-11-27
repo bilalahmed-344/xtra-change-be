@@ -16,6 +16,7 @@ model User {
   firstName      String   @default("")
   lastName       String   @default("")
   email       String?   @unique
+  fcmToken    String?   @unique
   dob         DateTime?
   address     String?   
   country     String?   
