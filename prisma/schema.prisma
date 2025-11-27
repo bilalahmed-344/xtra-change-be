@@ -43,7 +43,7 @@ model User {
 
   cards Card[]
 
-
+  notifications Notifications[]
 }
 
 model Card {
@@ -175,6 +175,23 @@ model Withdrawal {
 
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+
+model Notifications { 
+  id        String   @id @default(uuid())
+  userId    String?  
+  title     String
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relation to User (optional, because notifications can be global)
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+
+
+
 enum WithdrawalStatus {
   PENDING
   PROCESSING
@@ -182,6 +199,7 @@ enum WithdrawalStatus {
   FAILED
   READY
 }
+
 
 
 enum RoundUpStatus {
